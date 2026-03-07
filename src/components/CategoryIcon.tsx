@@ -6,6 +6,6 @@ interface CategoryIconProps extends LucideProps {
 }
 
 export function CategoryIcon({ name, ...props }: CategoryIconProps) {
-  const Icon = (Icons as Record<string, React.ComponentType<LucideProps>>)[name] || Icons.Circle;
+  const Icon = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name] || Icons.Circle;
   return <Icon {...props} />;
 }
