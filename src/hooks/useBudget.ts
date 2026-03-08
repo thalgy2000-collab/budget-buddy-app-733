@@ -17,9 +17,12 @@ export function useBudget() {
   const [entries, setEntries] = useState<BudgetEntry[]>(() =>
     loadFromStorage(STORAGE_KEY_ENTRIES, [])
   );
-  const [categories, setCategories] = useState<Category[]>(() =>
-    loadFromStorage(STORAGE_KEY_CATEGORIES, DEFAULT_CATEGORIES)
-  );
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const stored = loadFromStorage<Category[]>(STORAGE_KEY_CATEGORIES, []);
+    const defaultIds = DEFAULT_CATEGORIES.map((c) => c.id);
+    const hasAll = defaultIds.every((id) => stored.some((c) => c.id === id));
+    return hasAll && stored.length > 0 ? stored : DEFAULT_CATEGORIES;
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
