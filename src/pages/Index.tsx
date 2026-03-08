@@ -6,7 +6,8 @@ import { MonthSelector } from '@/components/MonthSelector';
 import { SummaryCards } from '@/components/SummaryCards';
 import { BudgetTable } from '@/components/BudgetTable';
 import { AddCategoryDialog } from '@/components/AddCategoryDialog';
-import { BarChart3, Copy } from 'lucide-react';
+import { BarChart3, Copy, PieChart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
