@@ -108,6 +108,33 @@ export function useBudget() {
     setEntries((prev) => prev.filter((e) => e.categoryId !== id));
   }, []);
 
+  const duplicatePlanned = useCallback(
+    (fromMonth: string, toMonth: string) => {
+      const sourceEntries = entries.filter((e) => e.month === fromMonth);
+      setEntries((prev) => {
+        const updated = [...prev];
+        sourceEntries.forEach((src) => {
+          const idx = updated.findIndex(
+            (e) => e.categoryId === src.categoryId && e.month === toMonth
+          );
+          if (idx >= 0) {
+            updated[idx] = { ...updated[idx], planned: src.planned };
+          } else {
+            updated.push({
+              id: `${src.categoryId}-${toMonth}`,
+              categoryId: src.categoryId,
+              month: toMonth,
+              planned: src.planned,
+              actual: 0,
+            });
+          }
+        });
+        return updated;
+      });
+    },
+    [entries]
+  );
+
   return {
     entries,
     categories,
@@ -116,5 +143,6 @@ export function useBudget() {
     getMonthSummary,
     addCategory,
     removeCategory,
+    duplicatePlanned,
   };
 }
