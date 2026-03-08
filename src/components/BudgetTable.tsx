@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Category, BudgetEntry } from '@/types/finance';
 import { CategoryIcon } from './CategoryIcon';
 import { Input } from '@/components/ui/input';
-import { Check, X, Pencil, Clock } from 'lucide-react';
+import { Check, X, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
