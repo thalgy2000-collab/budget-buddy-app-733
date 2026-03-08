@@ -67,6 +67,10 @@ const Index = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             <AddCategoryDialog onAdd={addCategory} />
+            <Button size="sm" variant="outline" onClick={() => navigate('/graficos')} className="h-8 gap-1.5 text-xs">
+              <PieChart className="h-3.5 w-3.5" />
+              Gráficos
+            </Button>
           </div>
         </div>
       </header>
