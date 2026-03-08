@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Category, BudgetEntry } from '@/types/finance';
 import { CategoryIcon } from './CategoryIcon';
 import { Input } from '@/components/ui/input';
-import { Check, X, Pencil } from 'lucide-react';
+import { Check, X, Pencil, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { CategoryDetailDialog } from './CategoryDetailDialog';
+import { Badge } from '@/components/ui/badge';
 
 interface BudgetTableProps {
   title: string;
@@ -14,6 +16,7 @@ interface BudgetTableProps {
   month: string;
   getEntry: (categoryId: string, month: string) => BudgetEntry | undefined;
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
+  updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
 }
 
 function formatCurrency(value: number) {
@@ -25,9 +28,10 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
+  const [detailCat, setDetailCat] = useState<Category | null>(null);
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
