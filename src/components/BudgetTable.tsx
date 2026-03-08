@@ -119,6 +119,24 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <span className="text-sm font-medium">{cat.name}</span>
+                      {entry?.installments && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {entry.currentInstallment || '?'}/{entry.installments}
+                        </Badge>
+                      )}
+                      {entry?.paid !== undefined && (
+                        <Badge variant={entry.paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                          {entry.paid ? 'Pago' : 'Pendente'}
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-auto shrink-0"
+                        onClick={(e) => { e.stopPropagation(); setDetailCat(cat); }}
+                      >
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right">
