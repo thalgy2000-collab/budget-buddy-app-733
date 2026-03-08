@@ -33,6 +33,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
+  const [historyCat, setHistoryCat] = useState<Category | null>(null);
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
