@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Category, BudgetEntry } from '@/types/finance';
 import { CategoryIcon } from './CategoryIcon';
 import { Input } from '@/components/ui/input';
-import { Check, X, Pencil, Info } from 'lucide-react';
+import { Check, X, Pencil, Info, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CategoryDetailDialog } from './CategoryDetailDialog';
+import { EntryHistoryDialog } from './EntryHistoryDialog';
 import { Badge } from '@/components/ui/badge';
 
 interface BudgetTableProps {
@@ -32,6 +33,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
+  const [historyCat, setHistoryCat] = useState<Category | null>(null);
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
@@ -149,19 +151,33 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                         min="0"
                         step="0.01"
                       />
-                    ) : entry?.updatedAt ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm text-muted-foreground cursor-default">{formatCurrency(plannedVal)}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     ) : (
-                      <span className="text-sm text-muted-foreground">{formatCurrency(plannedVal)}</span>
+                      <div className="flex items-center justify-end gap-1">
+                        {(entry?.history?.length || 0) > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 shrink-0"
+                            onClick={() => setHistoryCat(cat)}
+                          >
+                            <History className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        )}
+                        {entry?.updatedAt ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-sm text-muted-foreground cursor-default">{formatCurrency(plannedVal)}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{formatCurrency(plannedVal)}</span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -174,19 +190,23 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                         min="0"
                         step="0.01"
                       />
-                    ) : entry?.updatedAt ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm font-semibold cursor-default">{formatCurrency(actualVal)}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     ) : (
-                      <span className="text-sm font-semibold">{formatCurrency(actualVal)}</span>
+                      <div className="flex items-center justify-end gap-1">
+                        {entry?.updatedAt ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-sm font-semibold cursor-default">{formatCurrency(actualVal)}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-sm font-semibold">{formatCurrency(actualVal)}</span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -220,6 +240,15 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
           category={detailCat}
           entry={getEntry(detailCat.id, month)}
           onSave={(details) => updateEntryDetails(detailCat.id, month, details)}
+        />
+      )}
+
+      {historyCat && (
+        <EntryHistoryDialog
+          open={!!historyCat}
+          onOpenChange={(open) => !open && setHistoryCat(null)}
+          categoryName={historyCat.name}
+          entry={getEntry(historyCat.id, month)}
         />
       )}
     </div>

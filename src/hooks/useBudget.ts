@@ -41,12 +41,21 @@ export function useBudget() {
   const upsertEntry = useCallback(
     (categoryId: string, month: string, planned: number, actual: number) => {
       setEntries((prev) => {
+        const now = new Date().toISOString();
+        const record = { date: now, planned, actual };
         const idx = prev.findIndex(
           (e) => e.categoryId === categoryId && e.month === month
         );
         if (idx >= 0) {
           const updated = [...prev];
-          updated[idx] = { ...updated[idx], planned, actual, updatedAt: new Date().toISOString() };
+          const existing = updated[idx];
+          updated[idx] = {
+            ...existing,
+            planned,
+            actual,
+            updatedAt: now,
+            history: [...(existing.history || []), record],
+          };
           return updated;
         }
         return [
@@ -57,7 +66,8 @@ export function useBudget() {
             month,
             planned,
             actual,
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
+            history: [record],
           },
         ];
       });
