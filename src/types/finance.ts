@@ -13,6 +13,12 @@ export interface SubItem {
   value: number;
 }
 
+export interface HistoryRecord {
+  date: string;
+  planned: number;
+  actual: number;
+}
+
 export interface BudgetEntry {
   id: string;
   categoryId: string;
@@ -26,6 +32,7 @@ export interface BudgetEntry {
   dueDate?: string;
   paid?: boolean;
   subItems?: SubItem[];
+  history?: HistoryRecord[];
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
