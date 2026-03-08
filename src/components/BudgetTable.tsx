@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Category, BudgetEntry } from '@/types/finance';
 import { CategoryIcon } from './CategoryIcon';
 import { Input } from '@/components/ui/input';
-import { Check, X, Pencil } from 'lucide-react';
+import { Check, X, Pencil, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { CategoryDetailDialog } from './CategoryDetailDialog';
+import { Badge } from '@/components/ui/badge';
 
 interface BudgetTableProps {
   title: string;
@@ -14,6 +16,7 @@ interface BudgetTableProps {
   month: string;
   getEntry: (categoryId: string, month: string) => BudgetEntry | undefined;
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
+  updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
 }
 
 function formatCurrency(value: number) {
@@ -25,9 +28,10 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
+  const [detailCat, setDetailCat] = useState<Category | null>(null);
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
@@ -115,6 +119,24 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry }:
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <span className="text-sm font-medium">{cat.name}</span>
+                      {entry?.installments && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {entry.currentInstallment || '?'}/{entry.installments}
+                        </Badge>
+                      )}
+                      {entry?.paid !== undefined && (
+                        <Badge variant={entry.paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                          {entry.paid ? 'Pago' : 'Pendente'}
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-auto shrink-0"
+                        onClick={(e) => { e.stopPropagation(); setDetailCat(cat); }}
+                      >
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -190,6 +212,16 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry }:
           </tfoot>
         </table>
       </div>
+
+      {detailCat && (
+        <CategoryDetailDialog
+          open={!!detailCat}
+          onOpenChange={(open) => !open && setDetailCat(null)}
+          category={detailCat}
+          entry={getEntry(detailCat.id, month)}
+          onSave={(details) => updateEntryDetails(detailCat.id, month, details)}
+        />
+      )}
     </div>
   );
 }

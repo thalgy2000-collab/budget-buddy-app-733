@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, duplicatePlanned } = useBudget();
+  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, duplicatePlanned, updateEntryDetails } = useBudget();
 
   const currentDate = parse(month, 'yyyy-MM', new Date());
   const prevMonth = format(subMonths(currentDate, 1), 'yyyy-MM');
@@ -87,6 +87,7 @@ const Index = () => {
             month={month}
             getEntry={getEntry}
             upsertEntry={upsertEntry}
+            updateEntryDetails={updateEntryDetails}
           />
           <BudgetTable
             title="💸 Despesas"
@@ -94,6 +95,7 @@ const Index = () => {
             month={month}
             getEntry={getEntry}
             upsertEntry={upsertEntry}
+            updateEntryDetails={updateEntryDetails}
           />
         </div>
       </main>

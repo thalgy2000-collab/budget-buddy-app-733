@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { BudgetEntry, Category, DEFAULT_CATEGORIES } from '@/types/finance';
+import { BudgetEntry, Category, DEFAULT_CATEGORIES, SubItem } from '@/types/finance';
 
 const STORAGE_KEY_ENTRIES = 'finance_entries';
 const STORAGE_KEY_CATEGORIES = 'finance_categories';
@@ -137,6 +137,34 @@ export function useBudget() {
     [entries]
   );
 
+  const updateEntryDetails = useCallback(
+    (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
+      setEntries((prev) => {
+        const idx = prev.findIndex(
+          (e) => e.categoryId === categoryId && e.month === month
+        );
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...details, updatedAt: new Date().toISOString() };
+          return updated;
+        }
+        return [
+          ...prev,
+          {
+            id: `${categoryId}-${month}`,
+            categoryId,
+            month,
+            planned: 0,
+            actual: 0,
+            ...details,
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+      });
+    },
+    []
+  );
+
   return {
     entries,
     categories,
@@ -146,5 +174,6 @@ export function useBudget() {
     addCategory,
     removeCategory,
     duplicatePlanned,
+    updateEntryDetails,
   };
 }
