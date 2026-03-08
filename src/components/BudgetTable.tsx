@@ -114,7 +114,24 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry }:
                       <div className="p-1.5 rounded-lg bg-secondary">
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <span className="text-sm font-medium">{cat.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{cat.name}</span>
+                        {entry?.updatedAt && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1 cursor-default">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {format(new Date(entry.updatedAt), "dd/MM/yy HH:mm", { locale: ptBR })}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Última edição: {format(new Date(entry.updatedAt), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right">
