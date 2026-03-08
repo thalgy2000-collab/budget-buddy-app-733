@@ -13,6 +13,7 @@ export interface BudgetEntry {
   month: string; // "2026-03"
   planned: number;
   actual: number;
+  updatedAt?: string; // ISO date string
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [

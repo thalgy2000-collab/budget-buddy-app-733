@@ -46,7 +46,7 @@ export function useBudget() {
         );
         if (idx >= 0) {
           const updated = [...prev];
-          updated[idx] = { ...updated[idx], planned, actual };
+          updated[idx] = { ...updated[idx], planned, actual, updatedAt: new Date().toISOString() };
           return updated;
         }
         return [
@@ -57,6 +57,7 @@ export function useBudget() {
             month,
             planned,
             actual,
+            updatedAt: new Date().toISOString(),
           },
         ];
       });
@@ -118,7 +119,7 @@ export function useBudget() {
             (e) => e.categoryId === src.categoryId && e.month === toMonth
           );
           if (idx >= 0) {
-            updated[idx] = { ...updated[idx], planned: src.planned };
+            updated[idx] = { ...updated[idx], planned: src.planned, updatedAt: new Date().toISOString() };
           } else {
             updated.push({
               id: `${src.categoryId}-${toMonth}`,
@@ -126,6 +127,7 @@ export function useBudget() {
               month: toMonth,
               planned: src.planned,
               actual: 0,
+              updatedAt: new Date().toISOString(),
             });
           }
         });
