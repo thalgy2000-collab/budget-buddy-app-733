@@ -48,7 +48,24 @@ const Index = () => {
             <h1 className="font-display text-xl font-bold tracking-tight">FinPlan</h1>
           </div>
           <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+                  <Copy className="h-3.5 w-3.5" />
+                  Duplicar planejado
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDuplicate(prevMonth, prevLabel)}>
+                  Copiar de {prevLabel}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicate(nextMonth, nextLabel)}>
+                  Copiar de {nextLabel}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <AddCategoryDialog onAdd={addCategory} />
+          </div>
           </div>
         </div>
       </header>
