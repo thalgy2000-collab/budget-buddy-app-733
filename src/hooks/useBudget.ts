@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { BudgetEntry, Category, DEFAULT_CATEGORIES } from '@/types/finance';
+import { BudgetEntry, Category, DEFAULT_CATEGORIES, SubItem } from '@/types/finance';
 
 const STORAGE_KEY_ENTRIES = 'finance_entries';
 const STORAGE_KEY_CATEGORIES = 'finance_categories';
