@@ -17,9 +17,10 @@ export interface BudgetEntry {
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'salary', name: 'Salário', type: 'income', icon: 'Briefcase' },
-  { id: 'freelance', name: 'Freelance', type: 'income', icon: 'Laptop' },
-  { id: 'investments', name: 'Investimentos', type: 'income', icon: 'TrendingUp' },
-  { id: 'other-income', name: 'Outros (Receita)', type: 'income', icon: 'Plus' },
+  { id: 'bonus1', name: 'Bonus 1', type: 'income', icon: 'Laptop' },
+  { id: 'bonus2', name: 'Bonus 2', type: 'income', icon: 'TrendingUp' },
+  { id: 'umatch', name: 'Umatch', type: 'income', icon: 'Plus' },
+  { id: 'sobra', name: 'Sobra', type: 'income', icon: 'PiggyBank' },
   { id: 'housing', name: 'Moradia', type: 'expense', icon: 'Home' },
   { id: 'food', name: 'Alimentação', type: 'expense', icon: 'UtensilsCrossed' },
   { id: 'transport', name: 'Transporte', type: 'expense', icon: 'Car' },
