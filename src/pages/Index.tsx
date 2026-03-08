@@ -87,6 +87,7 @@ const Index = () => {
             month={month}
             getEntry={getEntry}
             upsertEntry={upsertEntry}
+            updateEntryDetails={updateEntryDetails}
           />
           <BudgetTable
             title="💸 Despesas"
@@ -94,6 +95,7 @@ const Index = () => {
             month={month}
             getEntry={getEntry}
             upsertEntry={upsertEntry}
+            updateEntryDetails={updateEntryDetails}
           />
         </div>
       </main>
