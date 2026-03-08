@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Category, BudgetEntry } from '@/types/finance';
 import { CategoryIcon } from './CategoryIcon';
 import { Input } from '@/components/ui/input';
-import { Check, X, Pencil, Info } from 'lucide-react';
+import { Check, X, Pencil, Info, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CategoryDetailDialog } from './CategoryDetailDialog';
+import { EntryHistoryDialog } from './EntryHistoryDialog';
 import { Badge } from '@/components/ui/badge';
 
 interface BudgetTableProps {
