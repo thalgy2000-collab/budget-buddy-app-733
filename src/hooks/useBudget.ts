@@ -46,7 +46,7 @@ export function useBudget() {
         );
         if (idx >= 0) {
           const updated = [...prev];
-          updated[idx] = { ...updated[idx], planned, actual };
+          updated[idx] = { ...updated[idx], planned, actual, updatedAt: new Date().toISOString() };
           return updated;
         }
         return [
@@ -57,6 +57,7 @@ export function useBudget() {
             month,
             planned,
             actual,
+            updatedAt: new Date().toISOString(),
           },
         ];
       });
