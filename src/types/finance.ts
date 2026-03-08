@@ -7,13 +7,25 @@ export interface Category {
   icon: string;
 }
 
+export interface SubItem {
+  id: string;
+  name: string;
+  value: number;
+}
+
 export interface BudgetEntry {
   id: string;
   categoryId: string;
   month: string; // "2026-03"
   planned: number;
   actual: number;
-  updatedAt?: string; // ISO date string
+  updatedAt?: string;
+  notes?: string;
+  installments?: number;
+  currentInstallment?: number;
+  dueDate?: string;
+  paid?: boolean;
+  subItems?: SubItem[];
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
