@@ -212,6 +212,16 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
           </tfoot>
         </table>
       </div>
+
+      {detailCat && (
+        <CategoryDetailDialog
+          open={!!detailCat}
+          onOpenChange={(open) => !open && setDetailCat(null)}
+          category={detailCat}
+          entry={getEntry(detailCat.id, month)}
+          onSave={(details) => updateEntryDetails(detailCat.id, month, details)}
+        />
+      )}
     </div>
   );
 }
