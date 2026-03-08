@@ -66,7 +66,6 @@ const Index = () => {
             </DropdownMenu>
             <AddCategoryDialog onAdd={addCategory} />
           </div>
-          </div>
         </div>
       </header>
 
