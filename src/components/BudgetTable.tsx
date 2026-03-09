@@ -30,11 +30,13 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
   const [historyCat, setHistoryCat] = useState<Category | null>(null);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
