@@ -18,6 +18,7 @@ interface BudgetTableProps {
   getEntry: (categoryId: string, month: string) => BudgetEntry | undefined;
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
   updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
+  renameCategory: (id: string, newName: string) => void;
 }
 
 function formatCurrency(value: number) {
@@ -29,11 +30,13 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
   const [historyCat, setHistoryCat] = useState<Category | null>(null);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const handleStartEdit = () => {
     const initial: Record<string, RowDraft> = {};
@@ -120,7 +123,33 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                       <div className="p-1.5 rounded-lg bg-secondary">
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <span className="text-sm font-medium">{cat.name}</span>
+                      {editingCatId === cat.id ? (
+                        <Input
+                          autoFocus
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                              setEditingCatId(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingCatId(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                            setEditingCatId(null);
+                          }}
+                          className="h-7 text-sm w-32 px-1.5"
+                        />
+                      ) : (
+                        <span
+                          className="text-sm font-medium cursor-pointer hover:underline"
+                          onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
+                        >
+                          {cat.name}
+                        </span>
+                      )}
                       {entry?.installments && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           {entry.currentInstallment || '?'}/{entry.installments}

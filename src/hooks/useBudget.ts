@@ -114,6 +114,12 @@ export function useBudget() {
     setCategories((prev) => [...prev, category]);
   }, []);
 
+  const renameCategory = useCallback((id: string, newName: string) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
+    );
+  }, []);
+
   const removeCategory = useCallback((id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
     setEntries((prev) => prev.filter((e) => e.categoryId !== id));
@@ -182,6 +188,7 @@ export function useBudget() {
     upsertEntry,
     getMonthSummary,
     addCategory,
+    renameCategory,
     removeCategory,
     duplicatePlanned,
     updateEntryDetails,
