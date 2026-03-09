@@ -123,7 +123,33 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                       <div className="p-1.5 rounded-lg bg-secondary">
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <span className="text-sm font-medium">{cat.name}</span>
+                      {editingCatId === cat.id ? (
+                        <Input
+                          autoFocus
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                              setEditingCatId(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingCatId(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                            setEditingCatId(null);
+                          }}
+                          className="h-7 text-sm w-32 px-1.5"
+                        />
+                      ) : (
+                        <span
+                          className="text-sm font-medium cursor-pointer hover:underline"
+                          onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
+                        >
+                          {cat.name}
+                        </span>
+                      )}
                       {entry?.installments && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           {entry.currentInstallment || '?'}/{entry.installments}
