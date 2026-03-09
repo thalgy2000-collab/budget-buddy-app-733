@@ -94,6 +94,7 @@ const Index = () => {
             getEntry={getEntry}
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
+            renameCategory={renameCategory}
           />
           <BudgetTable
             title="💸 Despesas"
@@ -102,6 +103,7 @@ const Index = () => {
             getEntry={getEntry}
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
+            renameCategory={renameCategory}
           />
         </div>
       </main>
