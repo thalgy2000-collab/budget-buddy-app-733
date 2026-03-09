@@ -188,6 +188,7 @@ export function useBudget() {
     upsertEntry,
     getMonthSummary,
     addCategory,
+    renameCategory,
     removeCategory,
     duplicatePlanned,
     updateEntryDetails,

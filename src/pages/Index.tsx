@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
   const navigate = useNavigate();
 
   const currentDate = parse(month, 'yyyy-MM', new Date());
