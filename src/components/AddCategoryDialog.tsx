@@ -51,7 +51,7 @@ export function AddCategoryDialog({ onAdd }: AddCategoryDialogProps) {
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Assinaturas"
+              placeholder="Ex: Assinaturas, Academia, Aluguel..."
               maxLength={50}
             />
           </div>
