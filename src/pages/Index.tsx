@@ -73,6 +73,10 @@ const Index = () => {
               <PieChart className="h-3.5 w-3.5" />
               Gráficos
             </Button>
+            <Button size="sm" variant="ghost" onClick={signOut} className="h-8 gap-1.5 text-xs text-muted-foreground">
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>
