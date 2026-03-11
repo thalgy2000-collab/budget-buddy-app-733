@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budget_entries: {
+        Row: {
+          actual: number
+          category_id: string
+          created_at: string
+          current_installment: number | null
+          due_date: string | null
+          history: Json | null
+          id: string
+          installments: number | null
+          month: string
+          notes: string | null
+          paid: boolean | null
+          planned: number
+          sub_items: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual?: number
+          category_id: string
+          created_at?: string
+          current_installment?: number | null
+          due_date?: string | null
+          history?: Json | null
+          id?: string
+          installments?: number | null
+          month: string
+          notes?: string | null
+          paid?: boolean | null
+          planned?: number
+          sub_items?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual?: number
+          category_id?: string
+          created_at?: string
+          current_installment?: number | null
+          due_date?: string | null
+          history?: Json | null
+          id?: string
+          installments?: number | null
+          month?: string
+          notes?: string | null
+          paid?: boolean | null
+          planned?: number
+          sub_items?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          key: string
+          name: string
+          sort_order: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string
+          id?: string
+          key: string
+          name: string
+          sort_order?: number
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          key?: string
+          name?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

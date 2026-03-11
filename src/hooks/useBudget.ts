@@ -1,36 +1,129 @@
 import { useState, useCallback, useEffect } from 'react';
 import { BudgetEntry, Category, DEFAULT_CATEGORIES, SubItem } from '@/types/finance';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
-const STORAGE_KEY_ENTRIES = 'finance_entries';
-const STORAGE_KEY_CATEGORIES = 'finance_categories';
+interface DbCategory {
+  id: string;
+  user_id: string;
+  key: string;
+  name: string;
+  type: string;
+  icon: string;
+  sort_order: number;
+}
 
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
+interface DbEntry {
+  id: string;
+  user_id: string;
+  category_id: string;
+  month: string;
+  planned: number;
+  actual: number;
+  notes: string | null;
+  installments: number | null;
+  current_installment: number | null;
+  due_date: string | null;
+  paid: boolean | null;
+  sub_items: any;
+  history: any;
+  updated_at: string;
+}
+
+function toCategory(db: DbCategory): Category {
+  return { id: db.id, name: db.name, type: db.type as 'income' | 'expense', icon: db.icon };
+}
+
+function toEntry(db: DbEntry): BudgetEntry {
+  return {
+    id: db.id,
+    categoryId: db.category_id,
+    month: db.month,
+    planned: Number(db.planned),
+    actual: Number(db.actual),
+    updatedAt: db.updated_at,
+    notes: db.notes ?? undefined,
+    installments: db.installments ?? undefined,
+    currentInstallment: db.current_installment ?? undefined,
+    dueDate: db.due_date ?? undefined,
+    paid: db.paid ?? undefined,
+    subItems: db.sub_items ?? undefined,
+    history: db.history ?? undefined,
+  };
 }
 
 export function useBudget() {
-  const [entries, setEntries] = useState<BudgetEntry[]>(() =>
-    loadFromStorage(STORAGE_KEY_ENTRIES, [])
-  );
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const stored = loadFromStorage<Category[]>(STORAGE_KEY_CATEGORIES, []);
-    const defaultIds = DEFAULT_CATEGORIES.map((c) => c.id);
-    const hasAll = defaultIds.every((id) => stored.some((c) => c.id === id));
-    return hasAll && stored.length > 0 ? stored : DEFAULT_CATEGORIES;
-  });
+  const { user } = useAuth();
+  const [entries, setEntries] = useState<BudgetEntry[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
-  }, [entries]);
+  // Seed default categories for new users
+  const seedDefaults = useCallback(async (userId: string) => {
+    const defaults = DEFAULT_CATEGORIES.map((c, i) => ({
+      user_id: userId,
+      key: c.id,
+      name: c.name,
+      type: c.type,
+      icon: c.icon,
+      sort_order: i,
+    }));
+    const { data, error } = await supabase.from('categories').insert(defaults).select();
+    if (error) {
+      console.error('Error seeding categories:', error);
+      return [];
+    }
+    return (data || []).map(toCategory);
+  }, []);
 
+  // Load data
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
+    if (!user) {
+      setCategories([]);
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      setLoading(true);
+      // Load categories
+      let { data: cats, error: catsErr } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order');
+
+      if (catsErr) {
+        console.error(catsErr);
+        toast.error('Erro ao carregar categorias');
+      }
+
+      let categoryList = (cats || []).map(toCategory);
+
+      // Seed defaults if empty
+      if (categoryList.length === 0) {
+        categoryList = await seedDefaults(user.id);
+      }
+
+      setCategories(categoryList);
+
+      // Load entries
+      const { data: ents, error: entsErr } = await supabase
+        .from('budget_entries')
+        .select('*');
+
+      if (entsErr) {
+        console.error(entsErr);
+        toast.error('Erro ao carregar lançamentos');
+      }
+
+      setEntries((ents || []).map(toEntry));
+      setLoading(false);
+    };
+
+    load();
+  }, [user, seedDefaults]);
 
   const getEntry = useCallback(
     (categoryId: string, month: string) =>
@@ -39,64 +132,52 @@ export function useBudget() {
   );
 
   const upsertEntry = useCallback(
-    (categoryId: string, month: string, planned: number, actual: number) => {
-      setEntries((prev) => {
-        const now = new Date().toISOString();
-        const record = { date: now, planned, actual };
-        const idx = prev.findIndex(
-          (e) => e.categoryId === categoryId && e.month === month
-        );
-        if (idx >= 0) {
-          const updated = [...prev];
-          const existing = updated[idx];
-          updated[idx] = {
-            ...existing,
-            planned,
-            actual,
-            updatedAt: now,
-            history: [...(existing.history || []), record],
-          };
-          return updated;
-        }
-        return [
-          ...prev,
-          {
-            id: `${categoryId}-${month}`,
-            categoryId,
+    async (categoryId: string, month: string, planned: number, actual: number) => {
+      if (!user) return;
+      const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
+      const now = new Date().toISOString();
+      const record = { date: now, planned, actual };
+      const history = JSON.parse(JSON.stringify([...(existing?.history || []), record]));
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('budget_entries')
+          .update({ planned, actual, history } as any)
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) { toast.error('Erro ao salvar'); return; }
+        setEntries((prev) => prev.map((e) => (e.id === existing.id ? toEntry(data) : e)));
+      } else {
+        const { data, error } = await supabase
+          .from('budget_entries')
+          .insert([{
+            user_id: user.id,
+            category_id: categoryId,
             month,
             planned,
             actual,
-            updatedAt: now,
-            history: [record],
-          },
-        ];
-      });
+            history,
+          }] as any)
+          .select()
+          .single();
+        if (error) { toast.error('Erro ao salvar'); return; }
+        setEntries((prev) => [...prev, toEntry(data)]);
+      }
     },
-    []
+    [user, entries]
   );
 
   const getMonthSummary = useCallback(
     (month: string) => {
       const monthEntries = entries.filter((e) => e.month === month);
-      const incomeCategories = categories
-        .filter((c) => c.type === 'income')
-        .map((c) => c.id);
-      const expenseCategories = categories
-        .filter((c) => c.type === 'expense')
-        .map((c) => c.id);
+      const incomeIds = categories.filter((c) => c.type === 'income').map((c) => c.id);
+      const expenseIds = categories.filter((c) => c.type === 'expense').map((c) => c.id);
 
-      const plannedIncome = monthEntries
-        .filter((e) => incomeCategories.includes(e.categoryId))
-        .reduce((sum, e) => sum + e.planned, 0);
-      const actualIncome = monthEntries
-        .filter((e) => incomeCategories.includes(e.categoryId))
-        .reduce((sum, e) => sum + e.actual, 0);
-      const plannedExpense = monthEntries
-        .filter((e) => expenseCategories.includes(e.categoryId))
-        .reduce((sum, e) => sum + e.planned, 0);
-      const actualExpense = monthEntries
-        .filter((e) => expenseCategories.includes(e.categoryId))
-        .reduce((sum, e) => sum + e.actual, 0);
+      const plannedIncome = monthEntries.filter((e) => incomeIds.includes(e.categoryId)).reduce((s, e) => s + e.planned, 0);
+      const actualIncome = monthEntries.filter((e) => incomeIds.includes(e.categoryId)).reduce((s, e) => s + e.actual, 0);
+      const plannedExpense = monthEntries.filter((e) => expenseIds.includes(e.categoryId)).reduce((s, e) => s + e.planned, 0);
+      const actualExpense = monthEntries.filter((e) => expenseIds.includes(e.categoryId)).reduce((s, e) => s + e.actual, 0);
 
       return {
         plannedIncome,
@@ -110,80 +191,117 @@ export function useBudget() {
     [entries, categories]
   );
 
-  const addCategory = useCallback((category: Category) => {
-    setCategories((prev) => [...prev, category]);
-  }, []);
+  const addCategory = useCallback(
+    async (category: Category) => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: user.id,
+          key: category.id,
+          name: category.name,
+          type: category.type,
+          icon: category.icon,
+          sort_order: categories.length,
+        })
+        .select()
+        .single();
+      if (error) { toast.error('Erro ao adicionar categoria'); return; }
+      setCategories((prev) => [...prev, toCategory(data)]);
+    },
+    [user, categories]
+  );
 
-  const renameCategory = useCallback((id: string, newName: string) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
-    );
-  }, []);
+  const renameCategory = useCallback(
+    async (id: string, newName: string) => {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name: newName })
+        .eq('id', id);
+      if (error) { toast.error('Erro ao renomear'); return; }
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
+    },
+    []
+  );
 
-  const removeCategory = useCallback((id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    setEntries((prev) => prev.filter((e) => e.categoryId !== id));
-  }, []);
+  const removeCategory = useCallback(
+    async (id: string) => {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) { toast.error('Erro ao remover'); return; }
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      setEntries((prev) => prev.filter((e) => e.categoryId !== id));
+    },
+    []
+  );
 
   const duplicatePlanned = useCallback(
-    (fromMonth: string, toMonth: string) => {
+    async (fromMonth: string, toMonth: string) => {
+      if (!user) return;
       const sourceEntries = entries.filter((e) => e.month === fromMonth);
-      setEntries((prev) => {
-        const updated = [...prev];
-        sourceEntries.forEach((src) => {
-          const idx = updated.findIndex(
-            (e) => e.categoryId === src.categoryId && e.month === toMonth
-          );
-          if (idx >= 0) {
-            updated[idx] = { ...updated[idx], planned: src.planned, updatedAt: new Date().toISOString() };
-          } else {
-            updated.push({
-              id: `${src.categoryId}-${toMonth}`,
-              categoryId: src.categoryId,
-              month: toMonth,
-              planned: src.planned,
-              actual: 0,
-              updatedAt: new Date().toISOString(),
-            });
-          }
-        });
-        return updated;
-      });
+      for (const src of sourceEntries) {
+        const existing = entries.find((e) => e.categoryId === src.categoryId && e.month === toMonth);
+        if (existing) {
+          await supabase.from('budget_entries').update({ planned: src.planned }).eq('id', existing.id);
+        } else {
+          await supabase.from('budget_entries').insert({
+            user_id: user.id,
+            category_id: src.categoryId,
+            month: toMonth,
+            planned: src.planned,
+            actual: 0,
+          });
+        }
+      }
+      // Reload entries
+      const { data } = await supabase.from('budget_entries').select('*');
+      setEntries((data || []).map(toEntry));
     },
-    [entries]
+    [user, entries]
   );
 
   const updateEntryDetails = useCallback(
-    (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
-      setEntries((prev) => {
-        const idx = prev.findIndex(
-          (e) => e.categoryId === categoryId && e.month === month
-        );
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], ...details, updatedAt: new Date().toISOString() };
-          return updated;
-        }
-        return [
-          ...prev,
-          {
-            id: `${categoryId}-${month}`,
-            categoryId,
+    async (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
+      if (!user) return;
+      const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
+      const dbDetails: any = {};
+      if (details.notes !== undefined) dbDetails.notes = details.notes;
+      if (details.installments !== undefined) dbDetails.installments = details.installments;
+      if (details.currentInstallment !== undefined) dbDetails.current_installment = details.currentInstallment;
+      if (details.dueDate !== undefined) dbDetails.due_date = details.dueDate;
+      if (details.paid !== undefined) dbDetails.paid = details.paid;
+      if (details.subItems !== undefined) dbDetails.sub_items = details.subItems;
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('budget_entries')
+          .update(dbDetails)
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) { toast.error('Erro ao salvar detalhes'); return; }
+        setEntries((prev) => prev.map((e) => (e.id === existing.id ? toEntry(data) : e)));
+      } else {
+        const { data, error } = await supabase
+          .from('budget_entries')
+          .insert({
+            user_id: user.id,
+            category_id: categoryId,
             month,
-            planned: 0,
-            actual: 0,
-            ...details,
-            updatedAt: new Date().toISOString(),
-          },
-        ];
-      });
+            ...dbDetails,
+          })
+          .select()
+          .single();
+        if (error) { toast.error('Erro ao salvar detalhes'); return; }
+        setEntries((prev) => [...prev, toEntry(data)]);
+      }
     },
-    []
+    [user, entries]
   );
 
   return {
     entries,
     categories,
+    loading,
     getEntry,
     upsertEntry,
     getMonthSummary,

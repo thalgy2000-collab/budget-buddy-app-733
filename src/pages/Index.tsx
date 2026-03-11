@@ -6,7 +6,7 @@ import { MonthSelector } from '@/components/MonthSelector';
 import { SummaryCards } from '@/components/SummaryCards';
 import { BudgetTable } from '@/components/BudgetTable';
 import { AddCategoryDialog } from '@/components/AddCategoryDialog';
-import { BarChart3, Copy, PieChart } from 'lucide-react';
+import { BarChart3, Copy, PieChart, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,10 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
   const currentDate = parse(month, 'yyyy-MM', new Date());
@@ -70,6 +72,10 @@ const Index = () => {
             <Button size="sm" variant="outline" onClick={() => navigate('/graficos')} className="h-8 gap-1.5 text-xs">
               <PieChart className="h-3.5 w-3.5" />
               Gráficos
+            </Button>
+            <Button size="sm" variant="ghost" onClick={signOut} className="h-8 gap-1.5 text-xs text-muted-foreground">
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
             </Button>
           </div>
         </div>
