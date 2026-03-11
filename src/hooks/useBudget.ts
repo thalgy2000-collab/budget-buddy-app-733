@@ -151,14 +151,14 @@ export function useBudget() {
       } else {
         const { data, error } = await supabase
           .from('budget_entries')
-          .insert({
+          .insert([{
             user_id: user.id,
             category_id: categoryId,
             month,
             planned,
             actual,
             history,
-          })
+          }] as any)
           .select()
           .single();
         if (error) { toast.error('Erro ao salvar'); return; }
