@@ -137,12 +137,12 @@ export function useBudget() {
       const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
       const now = new Date().toISOString();
       const record = { date: now, planned, actual };
-      const history = [...(existing?.history || []), record];
+      const history = JSON.parse(JSON.stringify([...(existing?.history || []), record]));
 
       if (existing) {
         const { data, error } = await supabase
           .from('budget_entries')
-          .update({ planned, actual, history })
+          .update({ planned, actual, history } as any)
           .eq('id', existing.id)
           .select()
           .single();
