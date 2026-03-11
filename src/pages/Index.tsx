@@ -16,10 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const { categories, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
   const currentDate = parse(month, 'yyyy-MM', new Date());
