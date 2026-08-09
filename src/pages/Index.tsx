@@ -53,6 +53,17 @@ const Index = () => {
             <h1 className="font-display text-xl font-bold tracking-tight">FinPlan</h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setHideValues((v) => !v)}
+              className="h-8 gap-1.5 text-xs"
+              aria-label={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+              aria-pressed={hideValues}
+            >
+              {hideValues ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {hideValues ? 'Mostrar' : 'Ocultar'}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
