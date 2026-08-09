@@ -14,6 +14,10 @@ function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function maskCurrency(value: number) {
+  return formatCurrency(value).replace(/[\d]/g, '•');
+}
+
 function CardItem({
   label,
   planned,
