@@ -211,7 +211,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                     {editing ? (
                       <ValueSumInput
                         ariaLabel={`Realizado ${cat.name}`}
-                        value={drafts[cat.id]?.actual || '0'}
+                        value={drafts[cat.id]?.actual ?? ''}
                         onChange={(v) => updateDraft(cat.id, 'actual', v)}
                       />
                     ) : (
