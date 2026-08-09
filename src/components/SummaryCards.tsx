@@ -54,9 +54,9 @@ function CardItem({
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="space-y-1">
-        <p className="text-2xl font-display font-bold">{formatCurrency(actual)}</p>
+        <p className="text-2xl font-display font-bold">{hideValues ? maskCurrency(actual) : formatCurrency(actual)}</p>
         <p className="text-xs text-muted-foreground">
-          Planejado: {formatCurrency(planned)}
+          Planejado: {hideValues ? maskCurrency(planned) : formatCurrency(planned)}
         </p>
       </div>
       {planned > 0 && (
