@@ -245,7 +245,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className={`text-sm font-medium ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                      {diff >= 0 ? '+' : ''}{hideValues ? maskCurrency(diff) : formatCurrency(diff)}
                     </span>
                   </td>
                 </tr>
