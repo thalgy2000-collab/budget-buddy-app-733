@@ -255,11 +255,11 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
           <tfoot>
             <tr className="bg-muted/30 font-semibold">
               <td className="py-3 px-4 text-sm">Total</td>
-              <td className="py-3 px-4 text-right text-sm text-muted-foreground">{formatCurrency(totalPlanned)}</td>
-              <td className="py-3 px-4 text-right text-sm">{formatCurrency(totalActual)}</td>
+              <td className="py-3 px-4 text-right text-sm text-muted-foreground">{hideValues ? maskCurrency(totalPlanned) : formatCurrency(totalPlanned)}</td>
+              <td className="py-3 px-4 text-right text-sm">{hideValues ? maskCurrency(totalActual) : formatCurrency(totalActual)}</td>
               <td className="py-3 px-4 text-right text-sm">
                 <span className={totalDiff >= 0 ? 'text-success' : 'text-destructive'}>
-                  {totalDiff >= 0 ? '+' : ''}{formatCurrency(totalDiff)}
+                  {totalDiff >= 0 ? '+' : ''}{hideValues ? maskCurrency(totalDiff) : formatCurrency(totalDiff)}
                 </span>
               </td>
             </tr>
