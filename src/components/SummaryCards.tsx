@@ -20,12 +20,14 @@ function CardItem({
   actual,
   icon: Icon,
   variant,
+  hideValues,
 }: {
   label: string;
   planned: number;
   actual: number;
   icon: React.ElementType;
   variant: 'income' | 'expense' | 'balance';
+  hideValues?: boolean;
 }) {
   const colors = {
     income: 'bg-success/10 text-success',
