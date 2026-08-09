@@ -86,6 +86,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualIncome}
         icon={TrendingUp}
         variant="income"
+        hideValues={props.hideValues}
       />
       <CardItem
         label="Despesas"
@@ -93,6 +94,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualExpense}
         icon={TrendingDown}
         variant="expense"
+        hideValues={props.hideValues}
       />
       <CardItem
         label="Saldo"
@@ -100,6 +102,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualBalance}
         icon={Wallet}
         variant="balance"
+        hideValues={props.hideValues}
       />
     </div>
   );
