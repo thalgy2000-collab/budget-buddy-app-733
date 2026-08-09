@@ -44,8 +44,8 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
     categories.forEach((cat) => {
       const entry = getEntry(cat.id, month);
       initial[cat.id] = {
-        planned: entry?.planned?.toString() || '0',
-        actual: entry?.actual?.toString() || '0',
+        planned: entry?.planned ? entry.planned.toString() : '',
+        actual: entry?.actual ? entry.actual.toString() : '',
       };
     });
     setDrafts(initial);
@@ -175,7 +175,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                     {editing ? (
                       <ValueSumInput
                         ariaLabel={`Planejado ${cat.name}`}
-                        value={drafts[cat.id]?.planned || '0'}
+                        value={drafts[cat.id]?.planned ?? ''}
                         onChange={(v) => updateDraft(cat.id, 'planned', v)}
                       />
                     ) : (
@@ -211,7 +211,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                     {editing ? (
                       <ValueSumInput
                         ariaLabel={`Realizado ${cat.name}`}
-                        value={drafts[cat.id]?.actual || '0'}
+                        value={drafts[cat.id]?.actual ?? ''}
                         onChange={(v) => updateDraft(cat.id, 'actual', v)}
                       />
                     ) : (
