@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [hideValues, setHideValues] = useState(false);
   const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
   const { signOut } = useAuth();
   const navigate = useNavigate();
