@@ -158,7 +158,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                           className="text-sm font-medium cursor-pointer hover:underline"
                           onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
                         >
-                          {cat.name}
+                          {hideValues ? maskText(cat.name) : cat.name}
                         </span>
                       )}
                       {entry?.installments && (
