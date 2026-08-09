@@ -230,7 +230,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm font-semibold cursor-default">{formatCurrency(actualVal)}</span>
+                                <span className="text-sm font-semibold cursor-default">{hideValues ? maskCurrency(actualVal) : formatCurrency(actualVal)}</span>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
@@ -238,7 +238,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
-                          <span className="text-sm font-semibold">{formatCurrency(actualVal)}</span>
+                          <span className="text-sm font-semibold">{hideValues ? maskCurrency(actualVal) : formatCurrency(actualVal)}</span>
                         )}
                       </div>
                     )}
