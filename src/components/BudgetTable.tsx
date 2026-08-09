@@ -20,6 +20,7 @@ interface BudgetTableProps {
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
   updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
   renameCategory: (id: string, newName: string) => void;
+  hideValues?: boolean;
 }
 
 function formatCurrency(value: number) {
