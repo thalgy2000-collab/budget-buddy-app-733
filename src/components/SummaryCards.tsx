@@ -7,6 +7,7 @@ interface SummaryCardsProps {
   actualExpense: number;
   plannedBalance: number;
   actualBalance: number;
+  hideValues?: boolean;
 }
 
 function formatCurrency(value: number) {
