@@ -28,6 +28,18 @@ export function EntryHistoryDialog({
 }: EntryHistoryDialogProps) {
   const history = entry?.history || [];
 
+  // Mostra o valor adicionado em cada alteração (diferença em relação ao registro anterior)
+  const rows = history.map((record, i) => {
+    const prev = history[i - 1];
+    return {
+      date: record.date,
+      plannedDelta: record.planned - (prev?.planned ?? 0),
+      actualDelta: record.actual - (prev?.actual ?? 0),
+      planned: record.planned,
+      actual: record.actual,
+    };
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -44,10 +56,10 @@ export function EntryHistoryDialog({
             <div className="space-y-1">
               <div className="grid grid-cols-3 text-xs text-muted-foreground uppercase tracking-wider py-2 px-1 border-b border-border/50">
                 <span>Data</span>
-                <span className="text-right">Planejado</span>
-                <span className="text-right">Realizado</span>
+                <span className="text-right">Planejado (+)</span>
+                <span className="text-right">Realizado (+)</span>
               </div>
-              {[...history].reverse().map((record, i) => (
+              {[...rows].reverse().map((record, i) => (
                 <div
                   key={i}
                   className="grid grid-cols-3 text-sm py-2 px-1 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
@@ -55,8 +67,32 @@ export function EntryHistoryDialog({
                   <span className="text-muted-foreground text-xs">
                     {format(new Date(record.date), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
                   </span>
-                  <span className="text-right">{formatCurrency(record.planned)}</span>
-                  <span className="text-right font-medium">{formatCurrency(record.actual)}</span>
+                  <span className="text-right">
+                    {record.plannedDelta !== 0 ? (
+                      <>
+                        {record.plannedDelta > 0 ? '+' : '−'}
+                        {formatCurrency(Math.abs(record.plannedDelta))}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                    <span className="block text-[10px] text-muted-foreground">
+                      total {formatCurrency(record.planned)}
+                    </span>
+                  </span>
+                  <span className="text-right font-medium">
+                    {record.actualDelta !== 0 ? (
+                      <>
+                        {record.actualDelta > 0 ? '+' : '−'}
+                        {formatCurrency(Math.abs(record.actualDelta))}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground font-normal">—</span>
+                    )}
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      total {formatCurrency(record.actual)}
+                    </span>
+                  </span>
                 </div>
               ))}
             </div>
