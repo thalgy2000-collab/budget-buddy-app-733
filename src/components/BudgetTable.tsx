@@ -28,12 +28,11 @@ function formatCurrency(value: number) {
 }
 
 function maskCurrency(value: number) {
-  const formatted = formatCurrency(value);
-  return formatted.replace(/[\d.,]/g, (c) => (c === 'R' || c === '$' || c === ' ' ? c : '•'));
+  return formatCurrency(value).replace(/[\d]/g, '•');
 }
 
 function maskText(text: string) {
-  return text.replace(/./g, '•');
+  return text.replace(/[^\s]/g, '•');
 }
 
 interface RowDraft {
