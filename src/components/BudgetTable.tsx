@@ -27,6 +27,15 @@ function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function maskCurrency(value: number) {
+  const formatted = formatCurrency(value);
+  return formatted.replace(/[\d.,]/g, (c) => (c === 'R' || c === '$' || c === ' ' ? c : '•'));
+}
+
+function maskText(text: string) {
+  return text.replace(/./g, '•');
+}
+
 interface RowDraft {
   planned: string;
   actual: string;
