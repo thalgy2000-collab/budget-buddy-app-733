@@ -41,7 +41,7 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, hideValues }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
