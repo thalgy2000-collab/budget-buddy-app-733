@@ -101,7 +101,7 @@ const Index = () => {
         </div>
 
         {/* Summary */}
-        <SummaryCards {...summary} />
+        <SummaryCards {...summary} hideValues={hideValues} />
 
         {/* Tables */}
         <div className="space-y-6">
@@ -113,6 +113,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            hideValues={hideValues}
           />
           <BudgetTable
             title="💸 Despesas"
@@ -122,6 +123,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            hideValues={hideValues}
           />
         </div>
       </main>
