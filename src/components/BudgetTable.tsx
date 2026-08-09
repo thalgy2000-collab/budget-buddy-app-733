@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { CategoryDetailDialog } from './CategoryDetailDialog';
 import { EntryHistoryDialog } from './EntryHistoryDialog';
 import { Badge } from '@/components/ui/badge';
+import { ValueSumInput } from './ValueSumInput';
 
 interface BudgetTableProps {
   title: string;
@@ -172,13 +173,10 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                   </td>
                   <td className="py-3 px-4 text-right">
                     {editing ? (
-                      <Input
-                        type="number"
+                      <ValueSumInput
+                        ariaLabel={`Planejado ${cat.name}`}
                         value={drafts[cat.id]?.planned || '0'}
-                        onChange={(e) => updateDraft(cat.id, 'planned', e.target.value)}
-                        className="w-28 ml-auto text-right h-8 text-sm"
-                        min="0"
-                        step="0.01"
+                        onChange={(v) => updateDraft(cat.id, 'planned', v)}
                       />
                     ) : (
                       <div className="flex items-center justify-end gap-1">
@@ -211,13 +209,10 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                   </td>
                   <td className="py-3 px-4 text-right">
                     {editing ? (
-                      <Input
-                        type="number"
+                      <ValueSumInput
+                        ariaLabel={`Realizado ${cat.name}`}
                         value={drafts[cat.id]?.actual || '0'}
-                        onChange={(e) => updateDraft(cat.id, 'actual', e.target.value)}
-                        className="w-28 ml-auto text-right h-8 text-sm"
-                        min="0"
-                        step="0.01"
+                        onChange={(v) => updateDraft(cat.id, 'actual', v)}
                       />
                     ) : (
                       <div className="flex items-center justify-end gap-1">
