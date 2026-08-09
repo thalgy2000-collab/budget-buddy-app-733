@@ -6,7 +6,7 @@ import { MonthSelector } from '@/components/MonthSelector';
 import { SummaryCards } from '@/components/SummaryCards';
 import { BudgetTable } from '@/components/BudgetTable';
 import { AddCategoryDialog } from '@/components/AddCategoryDialog';
-import { BarChart3, Copy, PieChart, LogOut } from 'lucide-react';
+import { BarChart3, Copy, PieChart, LogOut, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [hideValues, setHideValues] = useState(false);
   const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -52,6 +53,17 @@ const Index = () => {
             <h1 className="font-display text-xl font-bold tracking-tight">FinPlan</h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setHideValues((v) => !v)}
+              className="h-8 gap-1.5 text-xs"
+              aria-label={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+              aria-pressed={hideValues}
+            >
+              {hideValues ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {hideValues ? 'Mostrar' : 'Ocultar'}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
@@ -89,7 +101,7 @@ const Index = () => {
         </div>
 
         {/* Summary */}
-        <SummaryCards {...summary} />
+        <SummaryCards {...summary} hideValues={hideValues} />
 
         {/* Tables */}
         <div className="space-y-6">
@@ -101,6 +113,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            hideValues={hideValues}
           />
           <BudgetTable
             title="💸 Despesas"
@@ -110,6 +123,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            hideValues={hideValues}
           />
         </div>
       </main>

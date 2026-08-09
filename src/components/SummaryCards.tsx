@@ -7,10 +7,15 @@ interface SummaryCardsProps {
   actualExpense: number;
   plannedBalance: number;
   actualBalance: number;
+  hideValues?: boolean;
 }
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function maskCurrency(value: number) {
+  return formatCurrency(value).replace(/[\d]/g, '•');
 }
 
 function CardItem({
@@ -19,12 +24,14 @@ function CardItem({
   actual,
   icon: Icon,
   variant,
+  hideValues,
 }: {
   label: string;
   planned: number;
   actual: number;
   icon: React.ElementType;
   variant: 'income' | 'expense' | 'balance';
+  hideValues?: boolean;
 }) {
   const colors = {
     income: 'bg-success/10 text-success',
@@ -47,9 +54,9 @@ function CardItem({
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="space-y-1">
-        <p className="text-2xl font-display font-bold">{formatCurrency(actual)}</p>
+        <p className="text-2xl font-display font-bold">{hideValues ? maskCurrency(actual) : formatCurrency(actual)}</p>
         <p className="text-xs text-muted-foreground">
-          Planejado: {formatCurrency(planned)}
+          Planejado: {hideValues ? maskCurrency(planned) : formatCurrency(planned)}
         </p>
       </div>
       {planned > 0 && (
@@ -79,6 +86,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualIncome}
         icon={TrendingUp}
         variant="income"
+        hideValues={props.hideValues}
       />
       <CardItem
         label="Despesas"
@@ -86,6 +94,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualExpense}
         icon={TrendingDown}
         variant="expense"
+        hideValues={props.hideValues}
       />
       <CardItem
         label="Saldo"
@@ -93,6 +102,7 @@ export function SummaryCards(props: SummaryCardsProps) {
         actual={props.actualBalance}
         icon={Wallet}
         variant="balance"
+        hideValues={props.hideValues}
       />
     </div>
   );

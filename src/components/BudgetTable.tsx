@@ -20,10 +20,19 @@ interface BudgetTableProps {
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
   updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
   renameCategory: (id: string, newName: string) => void;
+  hideValues?: boolean;
 }
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function maskCurrency(value: number) {
+  return formatCurrency(value).replace(/[\d]/g, '•');
+}
+
+function maskText(text: string) {
+  return text.replace(/[^\s]/g, '•');
 }
 
 interface RowDraft {
@@ -31,7 +40,7 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, hideValues }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
@@ -148,7 +157,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                           className="text-sm font-medium cursor-pointer hover:underline"
                           onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
                         >
-                          {cat.name}
+                          {hideValues ? maskText(cat.name) : cat.name}
                         </span>
                       )}
                       {entry?.installments && (
@@ -194,7 +203,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground cursor-default">{formatCurrency(plannedVal)}</span>
+                                <span className="text-sm text-muted-foreground cursor-default">{hideValues ? maskCurrency(plannedVal) : formatCurrency(plannedVal)}</span>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
@@ -202,7 +211,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
-                          <span className="text-sm text-muted-foreground">{formatCurrency(plannedVal)}</span>
+                          <span className="text-sm text-muted-foreground">{hideValues ? maskCurrency(plannedVal) : formatCurrency(plannedVal)}</span>
                         )}
                       </div>
                     )}
@@ -220,7 +229,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm font-semibold cursor-default">{formatCurrency(actualVal)}</span>
+                                <span className="text-sm font-semibold cursor-default">{hideValues ? maskCurrency(actualVal) : formatCurrency(actualVal)}</span>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Editado em {format(new Date(entry.updatedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
@@ -228,14 +237,14 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
-                          <span className="text-sm font-semibold">{formatCurrency(actualVal)}</span>
+                          <span className="text-sm font-semibold">{hideValues ? maskCurrency(actualVal) : formatCurrency(actualVal)}</span>
                         )}
                       </div>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className={`text-sm font-medium ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                      {diff >= 0 ? '+' : ''}{hideValues ? maskCurrency(diff) : formatCurrency(diff)}
                     </span>
                   </td>
                 </tr>
@@ -245,11 +254,11 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
           <tfoot>
             <tr className="bg-muted/30 font-semibold">
               <td className="py-3 px-4 text-sm">Total</td>
-              <td className="py-3 px-4 text-right text-sm text-muted-foreground">{formatCurrency(totalPlanned)}</td>
-              <td className="py-3 px-4 text-right text-sm">{formatCurrency(totalActual)}</td>
+              <td className="py-3 px-4 text-right text-sm text-muted-foreground">{hideValues ? maskCurrency(totalPlanned) : formatCurrency(totalPlanned)}</td>
+              <td className="py-3 px-4 text-right text-sm">{hideValues ? maskCurrency(totalActual) : formatCurrency(totalActual)}</td>
               <td className="py-3 px-4 text-right text-sm">
                 <span className={totalDiff >= 0 ? 'text-success' : 'text-destructive'}>
-                  {totalDiff >= 0 ? '+' : ''}{formatCurrency(totalDiff)}
+                  {totalDiff >= 0 ? '+' : ''}{hideValues ? maskCurrency(totalDiff) : formatCurrency(totalDiff)}
                 </span>
               </td>
             </tr>
