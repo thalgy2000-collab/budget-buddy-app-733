@@ -195,6 +195,94 @@ export class BudgetService {
     }
   }
 
+  async setPlannedBudget(params: {
+    categoryId: string;
+    month: string; // "YYYY-MM"
+    amount: number;
+  }): Promise<{ success: boolean; planned?: number; actual?: number; remaining?: number; error?: string }> {
+    if (!this.userId) {
+      const ok = await this.authenticate();
+      if (!ok) return { success: false, error: 'Não autenticado no Supabase' };
+    }
+
+    const { categoryId, month, amount } = params;
+
+    try {
+      // Verificar se já existe lançamento para essa categoria e mês
+      const { data: existing, error: fetchErr } = await this.client
+        .from('budget_entries')
+        .select('*')
+        .eq('user_id', this.userId)
+        .eq('category_id', categoryId)
+        .eq('month', month)
+        .maybeSingle();
+
+      if (fetchErr) {
+        console.error('[Supabase] Erro ao consultar lançamento:', fetchErr.message);
+        return { success: false, error: fetchErr.message };
+      }
+
+      const now = new Date().toISOString();
+
+      if (existing) {
+        const currentActual = Number(existing.actual || 0);
+        const history = Array.isArray(existing.history) ? [...existing.history] : [];
+        history.push({
+          date: now,
+          planned: amount,
+          actual: currentActual,
+        });
+
+        const { error: updateErr } = await this.client
+          .from('budget_entries')
+          .update({
+            planned: amount,
+            history,
+            updated_at: now,
+          })
+          .eq('id', existing.id);
+
+        if (updateErr) {
+          console.error('[Supabase] Erro ao atualizar planejado:', updateErr.message);
+          return { success: false, error: updateErr.message };
+        }
+
+        return {
+          success: true,
+          planned: amount,
+          actual: currentActual,
+          remaining: amount - currentActual,
+        };
+      } else {
+        // Criar novo registro para esse mês/categoria
+        const { error: insertErr } = await this.client.from('budget_entries').insert({
+          user_id: this.userId,
+          category_id: categoryId,
+          month,
+          planned: amount,
+          actual: 0,
+          history: [{ date: now, planned: amount, actual: 0 }],
+          updated_at: now,
+        });
+
+        if (insertErr) {
+          console.error('[Supabase] Erro ao criar lançamento planejado:', insertErr.message);
+          return { success: false, error: insertErr.message };
+        }
+
+        return {
+          success: true,
+          planned: amount,
+          actual: 0,
+          remaining: amount,
+        };
+      }
+    } catch (err: any) {
+      console.error('[Supabase] Exceção ao salvar planejado:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
   async getMonthBudgetSummary(month: string) {
     if (!this.userId) {
       await this.authenticate();

@@ -190,21 +190,54 @@ Responda APENAS com JSON válido:
     textPrompt?: string;
     mediaBuffer?: Buffer;
     mimeType?: string;
-  }): Promise<{ intent: 'QUERY' | 'EXPENSE'; month?: string; transcription?: string }> {
+  }): Promise<{ intent: 'QUERY' | 'EXPENSE' | 'BUDGET'; month?: string; transcription?: string; budgetAmount?: number; categoryHint?: string }> {
     const today = new Date();
     const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
-    const prompt = `Analise a mensagem ou áudio do usuário e classifique a intenção:
-1. "QUERY": O usuário está PERGUNTANDO ou consultando sobre suas contas/finanças/gastos/receitas (ex: "quanto gastei com alimentação?", "qual meu salário?", "quanto fiz de renda extra?", "qual meu saldo?", "como estão meus gastos?", "quais contas tenho pendentes?").
-2. "EXPENSE": O usuário está informando ou registrando um novo gasto que acabou de fazer ou enviando um comprovante (ex: "almoço 35", "gastei 50 no posto", "uber 20", comprovante de PIX).
+    const prompt = `Analise a mensagem ou áudio do usuário e classifique a intenção em EXATAMENTE uma das 3 categorias:
+
+1. "BUDGET": O usuário quer DEFINIR, PLANEJAR ou ESTABELECER um limite/meta de orçamento para uma categoria em um mês.
+   Palavras-chave típicas: "quero gastar", "meu orçamento de", "planejar", "reservar", "separar", "destinar", "limitar", "esse mês quero", "meu teto de", "pretendo gastar", "meta de gastos".
+   Exemplos:
+   - "esse mês quero gastar 200 reais com alimentação"
+   - "meu orçamento de transporte é 150 reais"
+   - "quero separar 500 para lazer esse mês"
+   - "vou destinar 1000 reais para moradia"
+   - "minha meta de alimentação é 800 reais esse mês"
+   - "planejei 300 reais para saúde"
+
+2. "EXPENSE": O usuário está REGISTRANDO algo que JÁ ACONTECEU — um gasto realizado, uma receita recebida, ou enviando um comprovante.
+   Palavras-chave típicas: "gastei", "paguei", "comprei", "almocei", "abastecer", "recebi", "entrou", "veio", verbos no passado ou presente indicando transação já feita.
+   Exemplos:
+   - "gastei 30 reais com comida hoje"
+   - "almoço 35"
+   - "paguei 50 no posto"
+   - "uber 20"
+   - "recebi 3000 de salário"
+   - comprovante de PIX enviado
+
+3. "QUERY": O usuário está PERGUNTANDO ou CONSULTANDO informações sobre suas finanças, sem registrar nada novo nem planejar.
+   Palavras-chave típicas: "quanto gastei", "quanto tenho", "quanto falta", "qual meu saldo", "como estão", "quanto sobra", "quanto ainda posso gastar".
+   Exemplos:
+   - "quanto gastei com alimentação esse mês?"
+   - "quanto ainda tenho pra gastar com transporte?"
+   - "qual meu saldo atual?"
+   - "como estão meus gastos?"
+
+REGRAS IMPORTANTES:
+- Frases no FUTURO ou com INTENÇÃO de gastar (quero, pretendo, planejo, vou destinar) → BUDGET
+- Frases no PASSADO ou PRESENTE indicando transação realizada (gastei, paguei, comprei) → EXPENSE
+- Perguntas consultivas (quanto gastei, quanto falta, qual meu saldo) → QUERY
 
 Mês atual de referência: "${currentMonth}".
 
-Responda APENAS com JSON:
+Responda APENAS com JSON válido:
 {
-  "intent": "QUERY" ou "EXPENSE",
-  "month": "YYYY-MM" (se a pergunta mencionar um mês específico como "em agosto", "mês passado", etc. Se não mencionar, retorne "${currentMonth}"),
-  "transcription": "texto do áudio se for áudio, ou o próprio texto da pergunta"
+  "intent": "QUERY" ou "EXPENSE" ou "BUDGET",
+  "month": "YYYY-MM" (se mencionar mês específico como "em agosto", "mês passado", etc. Se não, retorne "${currentMonth}"),
+  "transcription": "texto do áudio se for áudio, ou o próprio texto da mensagem",
+  "budgetAmount": número (SOMENTE se intent for BUDGET — o valor planejado mencionado, ex: 200. Caso contrário null),
+  "categoryHint": "string" (SOMENTE se intent for BUDGET — o nome da categoria mencionada pelo usuário, ex: "alimentação", "transporte". Caso contrário null)
 }`;
 
     const parts: any[] = [{ text: prompt }];
@@ -230,10 +263,13 @@ Responda APENAS com JSON:
         .replace(/\s*```$/i, '')
         .trim();
       const parsed = JSON.parse(cleanJson);
+      const intent = parsed.intent === 'QUERY' ? 'QUERY' : parsed.intent === 'BUDGET' ? 'BUDGET' : 'EXPENSE';
       return {
-        intent: parsed.intent === 'QUERY' ? 'QUERY' : 'EXPENSE',
+        intent,
         month: parsed.month || currentMonth,
         transcription: parsed.transcription || params.textPrompt || '',
+        budgetAmount: intent === 'BUDGET' ? (Number(parsed.budgetAmount) || undefined) : undefined,
+        categoryHint: intent === 'BUDGET' ? (parsed.categoryHint || undefined) : undefined,
       };
     } catch {
       // Se falhar a detecção, considera gasto por padrão
@@ -256,13 +292,26 @@ ${JSON.stringify(budgetSummary, null, 2)}
 PERGUNTA DO USUÁRIO:
 "${question}"
 
+CONCEITOS IMPORTANTES:
+- "planned" = valor PLANEJADO / orçamento / meta que o usuário definiu para aquela categoria no mês
+- "actual" = valor REALIZADO / efetivamente gasto ou recebido até agora
+- "Saldo restante por categoria" = planned - actual (quanto ainda pode gastar naquela categoria)
+  - Se positivo: o usuário ainda tem margem para gastar
+  - Se negativo: o usuário ESTOUROU o orçamento daquela categoria
+  - Se planned for 0: o usuário não definiu orçamento para essa categoria
+
 INSTRUÇÕES:
+- Quando o usuário perguntar "quanto ainda posso gastar com X?" ou "quanto falta de X?", calcule: planned - actual daquela categoria.
+- Quando o usuário perguntar sobre gastos de uma categoria, mostre o planejado, o realizado e o restante.
+- Quando o usuário perguntar o saldo geral, mostre receitas - despesas (tanto planejado quanto realizado).
+- Se uma categoria não tem planejado (planned = 0), avise que não há orçamento definido para ela.
+
 Você deve produzir DUAS respostas:
 1. "fullText": Resposta em texto para a tela do Telegram. Use formatação Markdown (negrito, valores em R$, tópicos com emojis se fizer sentido). Seja claro e organizado.
 2. "speechText": Resposta ULTRA DIRETA para ser falada em áudio. DEVE TER NO MÁXIMO 1 A 2 FRASES CURTAS (até 20 palavras). Vá direto aos números e à resposta, sem rodeios nem saudações longas.
-   - Exemplo bom de speechText: "Você gastou 120 reais com combustível este mês."
+   - Exemplo bom de speechText: "Você ainda pode gastar 170 reais com alimentação este mês."
+   - Exemplo bom de speechText: "Você estourou o orçamento de transporte em 50 reais."
    - Exemplo bom de speechText: "Seu saldo atual está positivo em 450 reais."
-   - Exemplo bom de speechText: "Não há registro de gastos com alimentação neste mês."
 
 Responda APENAS com um JSON válido:
 {

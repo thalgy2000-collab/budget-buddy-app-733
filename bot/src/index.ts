@@ -20,12 +20,29 @@ interface PendingTransaction extends ExtractedExpense {
 }
 const pendingExpenses = new Map<string, PendingTransaction>();
 
+// Armazenamento em memória para orçamentos planejados pendentes de confirmação
+interface PendingBudget {
+  id: string;
+  chatId: number;
+  categoryId: string;
+  categoryName: string;
+  amount: number;
+  month: string;
+  createdAt: number;
+}
+const pendingBudgets = new Map<string, PendingBudget>();
+
 // Limpeza de pendências antigas (> 1 hora)
 setInterval(() => {
   const now = Date.now();
   for (const [id, exp] of pendingExpenses.entries()) {
     if (now - exp.createdAt > 3600000) {
       pendingExpenses.delete(id);
+    }
+  }
+  for (const [id, bud] of pendingBudgets.entries()) {
+    if (now - bud.createdAt > 3600000) {
+      pendingBudgets.delete(id);
     }
   }
 }, 600000);
@@ -81,6 +98,92 @@ _Deseja registrar essa DESPESA no seu Budget Buddy?_`;
     .text(`❌ Cancelar`, `cancel:${exp.id}`);
 
   return { text, keyboard };
+}
+
+function buildBudgetConfirmationCard(bud: PendingBudget): { text: string; keyboard: InlineKeyboard } {
+  const monthLabel = getMonthName(bud.month);
+
+  const text =
+    `📋 *Orçamento / Planejamento Identificado:*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📂 *Categoria:* *${bud.categoryName}*\n` +
+    `💰 *Valor planejado:* *${formatCurrency(bud.amount)}*\n` +
+    `📆 *Mês:* *${monthLabel}* (${bud.month})\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `_Deseja definir esse orçamento no seu Budget Buddy?_`;
+
+  const keyboard = new InlineKeyboard()
+    .text(`✅ Confirmar Orçamento`, `confirm_budget:${bud.id}`)
+    .row()
+    .text(`📂 Trocar Categoria`, `change_budget_cat:${bud.id}`)
+    .text(`📅 Trocar Mês`, `change_budget_month:${bud.id}`)
+    .row()
+    .text(`❌ Cancelar`, `cancel_budget:${bud.id}`);
+
+  return { text, keyboard };
+}
+
+async function handleBudgetIntent(
+  ctx: any,
+  budgetService: BudgetService,
+  intentRes: { month?: string; transcription?: string; budgetAmount?: number; categoryHint?: string },
+  statusMsgId: number,
+): Promise<void> {
+  const amount = intentRes.budgetAmount;
+  const categoryHint = intentRes.categoryHint?.toLowerCase() || '';
+  const month = intentRes.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+  if (!amount || amount <= 0) {
+    await ctx.api.editMessageText(
+      ctx.chat.id,
+      statusMsgId,
+      `⚠️ Não consegui identificar o valor do orçamento. Tente algo como:\n_"Quero gastar 200 reais com alimentação esse mês"_`,
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+    return;
+  }
+
+  // Buscar a categoria mais próxima do hint
+  const categories = budgetService.getCategories();
+  let matchedCategory = categories.find(
+    (c) => c.name.toLowerCase() === categoryHint
+  );
+  if (!matchedCategory) {
+    matchedCategory = categories.find(
+      (c) => c.name.toLowerCase().includes(categoryHint) || categoryHint.includes(c.name.toLowerCase())
+    );
+  }
+  if (!matchedCategory) {
+    // Fuzzy: pegar categorias de despesa como fallback
+    const expenseCats = categories.filter((c) => c.type === 'expense');
+    matchedCategory = expenseCats[0] || categories[0];
+  }
+
+  if (!matchedCategory) {
+    await ctx.api.editMessageText(
+      ctx.chat.id,
+      statusMsgId,
+      `❌ Nenhuma categoria encontrada no seu perfil. Crie categorias primeiro no app.`,
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+    return;
+  }
+
+  const budId = Math.random().toString(36).substring(2, 9);
+  const pending: PendingBudget = {
+    id: budId,
+    chatId: ctx.chat.id,
+    categoryId: matchedCategory.id,
+    categoryName: matchedCategory.name,
+    amount,
+    month,
+    createdAt: Date.now(),
+  };
+  pendingBudgets.set(budId, pending);
+
+  const card = buildBudgetConfirmationCard(pending);
+  await ctx.api.deleteMessage(ctx.chat.id, statusMsgId).catch(() => {});
+  await ctx.reply(card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' });
 }
 
 async function getService(ctx: any): Promise<BudgetService | null> {
@@ -427,6 +530,12 @@ bot.on(['message:voice', 'message:audio'], async (ctx) => {
       return;
     }
 
+    // Se for definição de orçamento/planejamento (via áudio):
+    if (intentRes.intent === 'BUDGET') {
+      await handleBudgetIntent(ctx, budgetService, intentRes, statusMsg.message_id);
+      return;
+    }
+
     // Se for registro de gasto/receita:
     const categories = budgetService.getCategories();
     const extracted = await aiService.parseExpense({
@@ -503,6 +612,12 @@ bot.on('message:text', async (ctx) => {
       } catch (ttsErr: any) {
         console.warn('[TTS] Falha ao enviar áudio falado:', ttsErr.message);
       }
+      return;
+    }
+
+    // Se for definição de orçamento/planejamento:
+    if (intentRes.intent === 'BUDGET') {
+      await handleBudgetIntent(ctx, budgetService, intentRes, statusMsg.message_id);
       return;
     }
 
@@ -741,6 +856,181 @@ bot.callbackQuery(/^cancel:(.+)$/, async (ctx) => {
   pendingExpenses.delete(txId);
   await ctx.answerCallbackQuery({ text: 'Operação cancelada.' }).catch(() => {});
   await ctx.editMessageText('❌ *Operação cancelada.* Nenhuma alteração foi feita no seu sistema.', {
+    parse_mode: 'Markdown',
+  }).catch(() => {});
+});
+
+// ---------------- CALLBACKS DE ORÇAMENTO PLANEJADO ----------------
+
+// CONFIRMAR ORÇAMENTO PLANEJADO
+bot.callbackQuery(/^confirm_budget:(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const bud = pendingBudgets.get(budId);
+
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou ou já foi confirmada.' }).catch(() => {});
+  }
+
+  const budgetService = userManager.getBudgetService(bud.chatId);
+  if (!budgetService) {
+    return ctx.answerCallbackQuery({ text: 'Sua sessão expirou. Conecte-se novamente.' }).catch(() => {});
+  }
+
+  await ctx.answerCallbackQuery({ text: 'Salvando orçamento planejado...' }).catch(() => {});
+
+  const result = await budgetService.setPlannedBudget({
+    categoryId: bud.categoryId,
+    month: bud.month,
+    amount: bud.amount,
+  });
+
+  if (result.success) {
+    pendingBudgets.delete(budId);
+    const monthLabel = getMonthName(bud.month);
+    const remainingText = result.remaining !== undefined
+      ? `\n💡 *Já gasto nesta categoria:* ${formatCurrency(result.actual || 0)}\n🎯 *Restante disponível:* ${formatCurrency(result.remaining)}`
+      : '';
+
+    await ctx.editMessageText(
+      `📋 *Orçamento Definido com Sucesso!*\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `📂 *Categoria:* ${bud.categoryName}\n` +
+      `💰 *Valor planejado:* *${formatCurrency(bud.amount)}*\n` +
+      `📆 *Mês:* ${monthLabel} (${bud.month})${remainingText}\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Sincronizado no seu painel do Budget Buddy!_`,
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+  } else {
+    await ctx.reply(`❌ *Erro ao salvar orçamento:* ${result.error}`, { parse_mode: 'Markdown' });
+  }
+});
+
+// TROCAR CATEGORIA DO ORÇAMENTO
+bot.callbackQuery(/^change_budget_cat:(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const bud = pendingBudgets.get(budId);
+
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou.' }).catch(() => {});
+  }
+
+  const budgetService = userManager.getBudgetService(bud.chatId);
+  if (!budgetService) {
+    return ctx.answerCallbackQuery({ text: 'Sessão expirada.' }).catch(() => {});
+  }
+
+  await ctx.answerCallbackQuery().catch(() => {});
+  const categories = budgetService.getCategories();
+  const keyboard = new InlineKeyboard();
+
+  categories.forEach((cat, idx) => {
+    keyboard.text(cat.name, `set_budget_cat:${budId}:${cat.id}`);
+    if (idx % 2 === 1) keyboard.row();
+  });
+
+  keyboard.row().text('⬅️ Voltar', `back_budget:${budId}`);
+
+  await ctx.editMessageText(
+    `📂 *Selecione a categoria para o orçamento de ${formatCurrency(bud.amount)}:*`,
+    { reply_markup: keyboard, parse_mode: 'Markdown' }
+  ).catch(() => {});
+});
+
+// APLICAR NOVA CATEGORIA AO ORÇAMENTO
+bot.callbackQuery(/^set_budget_cat:(.+):(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const newCatId = ctx.match[2];
+  const bud = pendingBudgets.get(budId);
+
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou.' }).catch(() => {});
+  }
+
+  const budgetService = userManager.getBudgetService(bud.chatId);
+  if (!budgetService) return;
+
+  const categories = budgetService.getCategories();
+  const selected = categories.find((c) => c.id === newCatId);
+  if (selected) {
+    bud.categoryId = selected.id;
+    bud.categoryName = selected.name;
+  }
+
+  await ctx.answerCallbackQuery({ text: `Categoria alterada para: ${bud.categoryName}` }).catch(() => {});
+  const card = buildBudgetConfirmationCard(bud);
+  await ctx.editMessageText(card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' }).catch(() => {});
+});
+
+// TROCAR MÊS DO ORÇAMENTO
+bot.callbackQuery(/^change_budget_month:(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const bud = pendingBudgets.get(budId);
+
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou.' }).catch(() => {});
+  }
+
+  await ctx.answerCallbackQuery().catch(() => {});
+
+  const [currYear, currMonth] = bud.month.split('-').map(Number);
+  const options: { monthStr: string; label: string }[] = [];
+
+  for (let i = -2; i <= 2; i++) {
+    const d = new Date(currYear, currMonth - 1 + i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const monthStr = `${y}-${m}`;
+    options.push({ monthStr, label: getMonthName(monthStr) });
+  }
+
+  const keyboard = new InlineKeyboard();
+  options.forEach((opt, idx) => {
+    const isCurrent = opt.monthStr === bud.month ? '📍 ' : '';
+    keyboard.text(`${isCurrent}${opt.label}`, `set_budget_month:${budId}:${opt.monthStr}`);
+    if (idx % 2 === 1) keyboard.row();
+  });
+  keyboard.row().text('⬅️ Voltar', `back_budget:${budId}`);
+
+  await ctx.editMessageText(
+    `📅 *Escolha o mês para definir o orçamento de ${formatCurrency(bud.amount)}:*\n` +
+    `Categoria: _${bud.categoryName}_`,
+    { reply_markup: keyboard, parse_mode: 'Markdown' }
+  ).catch(() => {});
+});
+
+// APLICAR NOVO MÊS AO ORÇAMENTO
+bot.callbackQuery(/^set_budget_month:(.+):(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const newMonth = ctx.match[2];
+  const bud = pendingBudgets.get(budId);
+
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou.' }).catch(() => {});
+  }
+
+  bud.month = newMonth;
+  await ctx.answerCallbackQuery({ text: `Mês alterado para: ${getMonthName(newMonth)}` }).catch(() => {});
+  const card = buildBudgetConfirmationCard(bud);
+  await ctx.editMessageText(card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' }).catch(() => {});
+});
+
+// VOLTAR (ORÇAMENTO)
+bot.callbackQuery(/^back_budget:(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  const bud = pendingBudgets.get(budId);
+  if (!bud) {
+    return ctx.answerCallbackQuery({ text: 'Essa solicitação expirou.' }).catch(() => {});
+  }
+  await ctx.answerCallbackQuery().catch(() => {});
+  const card = buildBudgetConfirmationCard(bud);
+  await ctx.editMessageText(card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' }).catch(() => {});
+});
+
+// CANCELAR ORÇAMENTO
+bot.callbackQuery(/^cancel_budget:(.+)$/, async (ctx) => {
+  const budId = ctx.match[1];
+  pendingBudgets.delete(budId);
+  await ctx.answerCallbackQuery({ text: 'Operação cancelada.' }).catch(() => {});
+  await ctx.editMessageText('❌ *Operação cancelada.* Nenhum orçamento foi definido.', {
     parse_mode: 'Markdown',
   }).catch(() => {});
 });
