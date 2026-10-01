@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment & Bot
+.env
+.env*.local
+bot/.env
+bot/node_modules
+bot/dist
+bot/data
