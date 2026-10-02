@@ -1,3 +1,4 @@
+import http from 'http';
 import { Bot, InlineKeyboard, InputFile } from 'grammy';
 import { config, validateConfig } from './config.js';
 import { BudgetService } from './supabase.js';
@@ -1053,6 +1054,15 @@ bot.catch((err) => {
 async function bootstrap() {
   console.log('Iniciando Budget Buddy Bot (Multi-usuário)...');
   await userManager.initDefaultAdmin();
+
+  // Servidor HTTP leve para o Health Check do Render (permite usar o plano gratuito Web Service)
+  const port = process.env.PORT || 3000;
+  http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('🤖 Budget Buddy Bot está online e operando!');
+  }).listen(port, () => {
+    console.log(`🌐 Health check HTTP ativo na porta ${port}`);
+  });
 
   bot.start({
     drop_pending_updates: false,
