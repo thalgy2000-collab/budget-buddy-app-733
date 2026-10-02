@@ -38,6 +38,10 @@ export class UserManager {
 
   private saveUsers() {
     try {
+      const dir = path.dirname(this.filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
       const list = Array.from(this.users.values());
       fs.writeFileSync(this.filePath, JSON.stringify(list, null, 2), 'utf-8');
     } catch (e: any) {
