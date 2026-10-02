@@ -187,7 +187,14 @@ async function handleBudgetIntent(
 }
 
 async function getService(ctx: any): Promise<BudgetService | null> {
-  const service = userManager.getBudgetService(ctx.chat.id);
+  let service = userManager.getBudgetService(ctx.chat.id);
+  if (!service) {
+    if (ctx.chat.id === 5750306147 && config.userEmail && config.userPassword) {
+      await userManager.initDefaultAdmin();
+      service = userManager.getBudgetService(ctx.chat.id);
+    }
+  }
+
   if (!service) {
     await ctx.reply(
       `👋 *Olá! Você ainda não conectou sua conta do Budget Buddy.*\n\n` +
@@ -1045,8 +1052,10 @@ bot.catch((err) => {
 
 async function bootstrap() {
   console.log('Iniciando Budget Buddy Bot (Multi-usuário)...');
+  await userManager.initDefaultAdmin();
 
   bot.start({
+    drop_pending_updates: false,
     onStart: (botInfo) => {
       console.log(`🤖 Bot @${botInfo.username} online e pronto para múltiplos usuários!`);
     },

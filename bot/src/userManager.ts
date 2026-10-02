@@ -48,7 +48,7 @@ export class UserManager {
   /**
    * Conecta automaticamente o Thalgy com o chatId dele (5750306147)
    */
-  private async initDefaultAdmin() {
+  async initDefaultAdmin() {
     if (config.userEmail && config.userPassword) {
       const adminChatId = 5750306147;
       if (!this.users.has(adminChatId)) {
