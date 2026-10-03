@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Category, BudgetEntry, SubItem } from '@/types/finance';
 import {
   Dialog,
@@ -35,6 +35,7 @@ export function CategoryDetailDialog({
   const [dueDate, setDueDate] = useState('');
   const [paid, setPaid] = useState(false);
   const [subItems, setSubItems] = useState<SubItem[]>([]);
+  const initialSubTotalRef = useRef(0);
 
   useEffect(() => {
     if (open) {
@@ -44,6 +45,10 @@ export function CategoryDetailDialog({
       setDueDate(entry?.dueDate || '');
       setPaid(entry?.paid || false);
       setSubItems(entry?.subItems || []);
+      initialSubTotalRef.current = (entry?.subItems || []).reduce(
+        (sum, item) => sum + item.value,
+        0
+      );
     }
   }, [open, entry]);
 
@@ -69,6 +74,7 @@ export function CategoryDetailDialog({
   };
 
   const handleSave = () => {
+    const delta = subTotal - initialSubTotalRef.current;
     onSave({
       notes: notes || undefined,
       installments: installments ? parseInt(installments) : undefined,
@@ -76,6 +82,10 @@ export function CategoryDetailDialog({
       dueDate: dueDate || undefined,
       paid,
       subItems: subItems.length > 0 ? subItems : undefined,
+      actual:
+        delta !== 0 && entry
+          ? Math.max(0, entry.actual + delta)
+          : undefined,
     });
     onOpenChange(false);
   };

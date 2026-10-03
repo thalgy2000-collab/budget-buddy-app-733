@@ -294,6 +294,16 @@ export function useBudget() {
       if (details.dueDate !== undefined) dbDetails.due_date = details.dueDate;
       if (details.paid !== undefined) dbDetails.paid = details.paid;
       if (details.subItems !== undefined) dbDetails.sub_items = details.subItems;
+      if (details.actual !== undefined) {
+        dbDetails.actual = details.actual;
+        const now = new Date().toISOString();
+        dbDetails.history = JSON.parse(
+          JSON.stringify([
+            ...(existing?.history || []),
+            { date: now, planned: existing?.planned ?? 0, actual: details.actual },
+          ])
+        );
+      }
 
       if (existing) {
         const { data, error } = await supabase
