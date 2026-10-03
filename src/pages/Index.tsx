@@ -73,6 +73,21 @@ const Index = () => {
               {hideValues ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {hideValues ? 'Mostrar' : 'Ocultar'}
             </Button>
+            {canUndoDuplicate && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  undoDuplicate();
+                  toast.success('Duplicação desfeita');
+                }}
+                className="h-8 gap-1.5 text-xs"
+                aria-label="Desfazer duplicação"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                Desfazer
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
