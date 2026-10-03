@@ -6,7 +6,7 @@ import { MonthSelector } from '@/components/MonthSelector';
 import { SummaryCards } from '@/components/SummaryCards';
 import { BudgetTable } from '@/components/BudgetTable';
 import { AddCategoryDialog } from '@/components/AddCategoryDialog';
-import { BarChart3, Copy, PieChart, LogOut, Eye, EyeOff, Undo2 } from 'lucide-react';
+import { BarChart3, Copy, PieChart, LogOut, Eye, EyeOff, Undo2, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,17 +51,20 @@ const Index = () => {
   const expenseCategories = categories.filter((c) => c.type === 'expense');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl gradient-gold">
-              <BarChart3 className="h-5 w-5 text-accent-foreground" />
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 w-full">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          {/* Logo & Nome */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl gradient-gold shrink-0">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
             </div>
-            <h1 className="font-display text-xl font-bold tracking-tight">Finance Fácil</h1>
+            <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight truncate">Finance Fácil</h1>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Desktop Actions (telas médias e grandes) */}
+          <div className="hidden md:flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -113,6 +116,62 @@ const Index = () => {
               <LogOut className="h-3.5 w-3.5" />
               Sair
             </Button>
+          </div>
+
+          {/* Mobile Actions (celular) */}
+          <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            <AddCategoryDialog onAdd={addCategory} />
+            
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => navigate('/graficos')}
+              className="h-8 w-8 shrink-0"
+              title="Gráficos"
+            >
+              <PieChart className="h-4 w-4" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" title="Mais opções">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => setHideValues((v) => !v)} className="gap-2 text-xs">
+                  {hideValues ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  {hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => handleDuplicate(prevMonth, prevLabel)} className="gap-2 text-xs">
+                  <Copy className="h-4 w-4" />
+                  Copiar planejado de {prevLabel}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicate(nextMonth, nextLabel)} className="gap-2 text-xs">
+                  <Copy className="h-4 w-4" />
+                  Copiar planejado de {nextLabel}
+                </DropdownMenuItem>
+
+                {canUndoDuplicate && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      undoDuplicate();
+                      toast.success('Duplicação desfeita');
+                    }}
+                    className="gap-2 text-xs"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Desfazer duplicação
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuItem onClick={signOut} className="gap-2 text-xs text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4" />
+                  Sair da conta
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

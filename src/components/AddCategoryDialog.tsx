@@ -36,9 +36,10 @@ export function AddCategoryDialog({ onAdd }: AddCategoryDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Categoria
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs px-2.5 sm:px-3">
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Nova Categoria</span>
+          <span className="inline sm:hidden">Categoria</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[360px]">

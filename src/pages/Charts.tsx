@@ -88,17 +88,17 @@ const Charts = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl gradient-gold">
-              <BarChart3 className="h-5 w-5 text-accent-foreground" />
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 w-full">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl gradient-gold shrink-0">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
             </div>
-            <h1 className="font-display text-xl font-bold tracking-tight">FinPlan</h1>
+            <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight truncate">Finance Fácil</h1>
           </div>
-          <Button size="sm" variant="outline" onClick={() => navigate('/')}>
-            Voltar ao orçamento
+          <Button size="sm" variant="outline" onClick={() => navigate('/')} className="h-8 text-xs shrink-0">
+            Voltar <span className="hidden sm:inline">&nbsp;ao orçamento</span>
           </Button>
         </div>
       </header>

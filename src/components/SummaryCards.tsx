@@ -46,16 +46,16 @@ function CardItem({
   };
 
   return (
-    <div className="bg-card rounded-xl p-5 shadow-card flex flex-col gap-3">
-      <div className="flex items-center gap-3">
+    <div className="bg-card rounded-xl p-4 sm:p-5 shadow-card flex flex-col gap-2.5 sm:gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <div className={`p-2 rounded-lg ${colors[variant]}`}>
-          <Icon className={`h-5 w-5 ${iconColors[variant]}`} />
+          <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColors[variant]}`} />
         </div>
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        <span className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</span>
       </div>
-      <div className="space-y-1">
-        <p className="text-2xl font-display font-bold">{hideValues ? maskCurrency(actual) : formatCurrency(actual)}</p>
-        <p className="text-xs text-muted-foreground">
+      <div className="space-y-0.5 sm:space-y-1">
+        <p className="text-xl sm:text-2xl font-display font-bold truncate">{hideValues ? maskCurrency(actual) : formatCurrency(actual)}</p>
+        <p className="text-xs text-muted-foreground truncate">
           Planejado: {hideValues ? maskCurrency(planned) : formatCurrency(planned)}
         </p>
       </div>

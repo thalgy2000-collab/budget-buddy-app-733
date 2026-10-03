@@ -14,23 +14,23 @@ export function MonthSelector({ month, onChange }: MonthSelectorProps) {
   const label = format(date, "MMMM 'de' yyyy", { locale: ptBR });
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5 sm:gap-3">
       <Button
         variant="ghost"
         size="icon"
         onClick={() => onChange(format(subMonths(date, 1), 'yyyy-MM'))}
-        className="h-9 w-9 rounded-full"
+        className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="font-display text-lg font-semibold capitalize min-w-[200px] text-center">
+      <span className="font-display text-base sm:text-lg font-semibold capitalize min-w-[150px] sm:min-w-[200px] text-center">
         {label}
       </span>
       <Button
         variant="ghost"
         size="icon"
         onClick={() => onChange(format(addMonths(date, 1), 'yyyy-MM'))}
-        className="h-9 w-9 rounded-full"
+        className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

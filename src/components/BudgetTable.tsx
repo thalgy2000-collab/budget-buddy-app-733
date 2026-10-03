@@ -109,7 +109,8 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
           </Button>
         )}
       </div>
-      <div className="overflow-x-auto">
+      {/* TABELA PARA DESKTOP (telas médias e grandes) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -130,7 +131,7 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                 <tr key={cat.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-secondary">
+                      <div className="p-1.5 rounded-lg bg-secondary shrink-0">
                         <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
                       </div>
                       {editingCatId === cat.id ? (
@@ -154,19 +155,19 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                         />
                       ) : (
                         <span
-                          className="text-sm font-medium cursor-pointer hover:underline"
+                          className="text-sm font-medium cursor-pointer hover:underline truncate"
                           onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
                         >
                           {hideValues ? maskText(cat.name) : cat.name}
                         </span>
                       )}
                       {entry?.installments && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
                           {entry.currentInstallment || '?'}/{entry.installments}
                         </Badge>
                       )}
                       {entry?.paid !== undefined && (
-                        <Badge variant={entry.paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                        <Badge variant={entry.paid ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 shrink-0">
                           {entry.paid ? 'Pago' : 'Pendente'}
                         </Badge>
                       )}
@@ -264,6 +265,163 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      {/* CARDS RESPONSIVOS PARA CELULAR (md:hidden) */}
+      <div className="block md:hidden">
+        <div className="divide-y divide-border/40">
+          {categories.map((cat) => {
+            const entry = getEntry(cat.id, month);
+            const plannedVal = entry?.planned || 0;
+            const actualVal = entry?.actual || 0;
+            const diff = cat.type === 'income' ? actualVal - plannedVal : plannedVal - actualVal;
+
+            return (
+              <div key={cat.id} className="p-3.5 hover:bg-muted/20 transition-colors">
+                {/* Linha Superior: Ícone, Nome da Categoria, Badges e Ações */}
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="p-1.5 rounded-lg bg-secondary shrink-0">
+                      <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    {editingCatId === cat.id ? (
+                      <Input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                            setEditingCatId(null);
+                          } else if (e.key === 'Escape') {
+                            setEditingCatId(null);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (editingName.trim()) renameCategory(cat.id, editingName.trim());
+                          setEditingCatId(null);
+                        }}
+                        className="h-7 text-xs w-full max-w-[140px] px-1.5"
+                      />
+                    ) : (
+                      <span
+                        className="text-sm font-semibold truncate cursor-pointer hover:underline"
+                        onClick={() => { setEditingCatId(cat.id); setEditingName(cat.name); }}
+                      >
+                        {hideValues ? maskText(cat.name) : cat.name}
+                      </span>
+                    )}
+
+                    {entry?.paid !== undefined && (
+                      <Badge variant={entry.paid ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0 shrink-0">
+                        {entry.paid ? 'Pago' : 'Pendente'}
+                      </Badge>
+                    )}
+                    {entry?.installments && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                        {entry.currentInstallment || '?'}/{entry.installments}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Botões de Ação na Direita */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {(entry?.history?.length || 0) > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-full"
+                        onClick={() => setHistoryCat(cat)}
+                        title="Histórico"
+                      >
+                        <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full"
+                      onClick={() => setDetailCat(cat)}
+                      title="Detalhes"
+                    >
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Linha de Valores (Modo Edição vs Modo Visualização) */}
+                {editing ? (
+                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/30">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">Planejado</span>
+                      <ValueSumInput
+                        ariaLabel={`Planejado ${cat.name}`}
+                        value={drafts[cat.id]?.planned ?? ''}
+                        onChange={(v) => updateDraft(cat.id, 'planned', v)}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">Realizado</span>
+                      <ValueSumInput
+                        ariaLabel={`Realizado ${cat.name}`}
+                        value={drafts[cat.id]?.actual ?? ''}
+                        onChange={(v) => updateDraft(cat.id, 'actual', v)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 bg-muted/40 rounded-lg p-2 text-center">
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-medium">Planejado</span>
+                      <span className="text-xs font-medium text-muted-foreground truncate block">
+                        {hideValues ? maskCurrency(plannedVal) : formatCurrency(plannedVal)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-medium">Realizado</span>
+                      <span className="text-xs font-bold text-foreground truncate block">
+                        {hideValues ? maskCurrency(actualVal) : formatCurrency(actualVal)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-medium">Diferença</span>
+                      <span className={`text-xs font-semibold truncate block ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {diff >= 0 ? '+' : ''}{hideValues ? maskCurrency(diff) : formatCurrency(diff)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Total da Categoria no Mobile */}
+        <div className="p-3.5 bg-muted/30 border-t border-border/50">
+          <div className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+            Total {title}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 bg-card rounded-lg p-2.5 text-center border border-border/40 shadow-sm">
+            <div>
+              <span className="text-[9px] uppercase text-muted-foreground block font-medium">Planejado</span>
+              <span className="text-xs font-medium text-muted-foreground truncate block">
+                {hideValues ? maskCurrency(totalPlanned) : formatCurrency(totalPlanned)}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase text-muted-foreground block font-medium">Realizado</span>
+              <span className="text-xs font-bold text-foreground truncate block">
+                {hideValues ? maskCurrency(totalActual) : formatCurrency(totalActual)}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase text-muted-foreground block font-medium">Diferença</span>
+              <span className={`text-xs font-bold truncate block ${totalDiff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {totalDiff >= 0 ? '+' : ''}{hideValues ? maskCurrency(totalDiff) : formatCurrency(totalDiff)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {detailCat && (
