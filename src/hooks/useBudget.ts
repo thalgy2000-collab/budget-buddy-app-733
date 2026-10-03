@@ -333,6 +333,7 @@ export function useBudget() {
     renameCategory,
     removeCategory,
     duplicatePlanned,
+    undoDuplicate,
     updateEntryDetails,
   };
 }
