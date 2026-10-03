@@ -234,30 +234,54 @@ export function useBudget() {
     []
   );
 
+  const [duplicateBackup, setDuplicateBackup] = useState<{
+    insertedIds: string[];
+    updated: { id: string; planned: number }[];
+  } | null>(null);
+
   const duplicatePlanned = useCallback(
     async (fromMonth: string, toMonth: string) => {
       if (!user) return;
       const sourceEntries = entries.filter((e) => e.month === fromMonth);
+      const insertedIds: string[] = [];
+      const updated: { id: string; planned: number }[] = [];
       for (const src of sourceEntries) {
         const existing = entries.find((e) => e.categoryId === src.categoryId && e.month === toMonth);
         if (existing) {
+          updated.push({ id: existing.id, planned: existing.planned });
           await supabase.from('budget_entries').update({ planned: src.planned }).eq('id', existing.id);
         } else {
-          await supabase.from('budget_entries').insert({
+          const { data } = await supabase.from('budget_entries').insert({
             user_id: user.id,
             category_id: src.categoryId,
             month: toMonth,
             planned: src.planned,
             actual: 0,
-          });
+          }).select('id').single();
+          if (data) insertedIds.push(data.id);
         }
       }
+      setDuplicateBackup({ insertedIds, updated });
       // Reload entries
       const { data } = await supabase.from('budget_entries').select('*');
       setEntries((data || []).map(toEntry));
     },
     [user, entries]
   );
+
+  const undoDuplicate = useCallback(async () => {
+    if (!duplicateBackup) return;
+    const { insertedIds, updated } = duplicateBackup;
+    if (insertedIds.length > 0) {
+      await supabase.from('budget_entries').delete().in('id', insertedIds);
+    }
+    for (const u of updated) {
+      await supabase.from('budget_entries').update({ planned: u.planned }).eq('id', u.id);
+    }
+    setDuplicateBackup(null);
+    const { data } = await supabase.from('budget_entries').select('*');
+    setEntries((data || []).map(toEntry));
+  }, [duplicateBackup]);
 
   const updateEntryDetails = useCallback(
     async (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
@@ -309,6 +333,7 @@ export function useBudget() {
     renameCategory,
     removeCategory,
     duplicatePlanned,
+    undoDuplicate,
     updateEntryDetails,
   };
 }
