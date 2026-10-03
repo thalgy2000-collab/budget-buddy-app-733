@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [hideValues, setHideValues] = useState(false);
-  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, updateEntryDetails } = useBudget();
+  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, undoDuplicate, updateEntryDetails } = useBudget();
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -34,7 +34,16 @@ const Index = () => {
 
   const handleDuplicate = (fromMonth: string, fromLabel: string) => {
     duplicatePlanned(fromMonth, month);
-    toast.success(`Valores planejados de ${fromLabel} copiados para ${currentLabel}`);
+    toast.success(`Valores planejados de ${fromLabel} copiados para ${currentLabel}`, {
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          undoDuplicate();
+          toast.success('Duplicação desfeita');
+        },
+      },
+      duration: 10000,
+    });
   };
 
   const summary = getMonthSummary(month);
