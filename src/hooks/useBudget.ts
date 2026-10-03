@@ -334,6 +334,7 @@ export function useBudget() {
     removeCategory,
     duplicatePlanned,
     undoDuplicate,
+    canUndoDuplicate: duplicateBackup !== null,
     updateEntryDetails,
   };
 }
