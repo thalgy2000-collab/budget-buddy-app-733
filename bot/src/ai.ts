@@ -182,6 +182,39 @@ Responda APENAS com JSON válido:
     }
   }
 
+  /**
+   * Decide se um e-mail (ex: Mercado Pago) descreve uma transação financeira real
+   * (compra, pagamento, PIX enviado/recebido, transferência) ou se é marketing/aviso genérico.
+   */
+  async classifyEmail(params: { subject: string; body: string }): Promise<{ isTransaction: boolean; reason: string }> {
+    const prompt = `Você recebe um e-mail enviado por um banco/carteira digital (ex: Mercado Pago).
+Decida se ele confirma uma TRANSAÇÃO FINANCEIRA REAL JÁ REALIZADA pelo usuário, com valor em dinheiro:
+- SIM: compra aprovada, pagamento realizado, PIX enviado, PIX recebido, transferência enviada/recebida, boleto pago, dinheiro recebido.
+- NÃO: promoções, ofertas, propaganda, cashback oferecido, código de segurança, login, avisos de fatura futura, pagamento pendente/recusado, pesquisas.
+
+ASSUNTO: ${params.subject}
+
+CORPO:
+${params.body.substring(0, 4000)}
+
+Responda APENAS com JSON válido:
+{ "isTransaction": true ou false, "reason": "motivo curto" }`;
+
+    try {
+      const text = await this.generateWithFallback([{ text: prompt }]);
+      const cleanJson = text
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      const parsed = JSON.parse(cleanJson);
+      return { isTransaction: parsed.isTransaction === true, reason: parsed.reason || '' };
+    } catch (err: any) {
+      console.warn('[IA] Falha ao classificar e-mail:', err.message);
+      return { isTransaction: false, reason: 'falha na classificação' };
+    }
+  }
+
   async detectIntent(params: {
     textPrompt?: string;
     mediaBuffer?: Buffer;

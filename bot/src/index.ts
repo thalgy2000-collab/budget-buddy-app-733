@@ -1049,15 +1049,108 @@ bot.catch((err) => {
   console.error('[Bot Error Handler] Erro capturado:', err.message || err);
 });
 
+// ---------------- E-MAILS ENCAMINHADOS (MERCADO PAGO) ----------------
+
+// Evita processar o mesmo e-mail duas vezes (caso o Apps Script reenvie)
+const processedEmailIds = new Set<string>();
+
+async function handleIncomingEmail(payload: {
+  messageId?: string;
+  subject?: string;
+  body?: string;
+  from?: string;
+  date?: string;
+}): Promise<{ status: 'duplicate' | 'ignored' | 'sent'; reason?: string }> {
+  const subject = (payload.subject || '').trim();
+  const body = (payload.body || '').trim();
+  const messageId = payload.messageId || '';
+
+  if (messageId && processedEmailIds.has(messageId)) {
+    return { status: 'duplicate' };
+  }
+
+  const chatId = config.adminChatId;
+  let budgetService = userManager.getBudgetService(chatId);
+  if (!budgetService) {
+    await userManager.initDefaultAdmin();
+    budgetService = userManager.getBudgetService(chatId);
+  }
+  if (!budgetService) throw new Error('Conta do administrador não conectada ao Budget Buddy');
+
+  // 1. Filtrar e-mails que não são transações (promoções, códigos, etc.)
+  const classification = await aiService.classifyEmail({ subject, body });
+  if (!classification.isTransaction) {
+    console.log(`[Email] Ignorado: "${subject}" (${classification.reason})`);
+    if (messageId) processedEmailIds.add(messageId);
+    return { status: 'ignored', reason: classification.reason };
+  }
+
+  // 2. Extrair dados da transação reaproveitando o mesmo parser usado para texto/áudio
+  const emailDate = payload.date ? new Date(payload.date) : new Date();
+  const extracted = await aiService.parseExpense({
+    textPrompt:
+      `E-mail de notificação financeira (remetente: ${payload.from || 'Mercado Pago'}).\n` +
+      `Assunto: ${subject}\n\n${body.substring(0, 4000)}`,
+    categories: budgetService.getCategories(),
+    fallbackDate: isNaN(emailDate.getTime()) ? new Date() : emailDate,
+  });
+
+  // 3. Criar pendência e enviar o cartão de confirmação no Telegram
+  const txId = Math.random().toString(36).substring(2, 9);
+  const pending: PendingTransaction = { ...extracted, id: txId, chatId, createdAt: Date.now() };
+  pendingExpenses.set(txId, pending);
+
+  const card = buildConfirmationCard(pending);
+  await bot.api.sendMessage(chatId, `📧 *Novo e-mail do Mercado Pago detectado*\n_${subject}_\n\n${card.text}`, {
+    reply_markup: card.keyboard,
+    parse_mode: 'Markdown',
+  }).catch(async () => {
+    // Fallback sem o assunto, caso ele contenha caracteres que quebrem o Markdown
+    await bot.api.sendMessage(chatId, card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' });
+  });
+
+  if (messageId) processedEmailIds.add(messageId);
+  console.log(`[Email] Transação enviada para confirmação: ${extracted.title} - ${extracted.amount}`);
+  return { status: 'sent' };
+}
+
 // ---------------- INICIALIZAÇÃO ----------------
 
 async function bootstrap() {
   console.log('Iniciando Budget Buddy Bot (Multi-usuário)...');
   await userManager.initDefaultAdmin();
 
-  // Servidor HTTP leve para o Health Check do Render (permite usar o plano gratuito Web Service)
+  // Servidor HTTP: health check do Render + webhook de e-mails (Mercado Pago via Google Apps Script)
   const port = process.env.PORT || 3000;
   http.createServer((req, res) => {
+    const url = new URL(req.url || '/', 'http://localhost');
+
+    if (req.method === 'POST' && url.pathname === '/email-webhook') {
+      let raw = '';
+      req.on('data', (chunk) => {
+        raw += chunk;
+        if (raw.length > 200_000) req.destroy(); // proteção contra payloads gigantes
+      });
+      req.on('end', async () => {
+        const sendJson = (status: number, body: any) => {
+          res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(body));
+        };
+        try {
+          const payload = JSON.parse(raw || '{}');
+          if (!config.emailWebhookSecret || payload.secret !== config.emailWebhookSecret) {
+            return sendJson(401, { ok: false, error: 'unauthorized' });
+          }
+          const result = await handleIncomingEmail(payload);
+          sendJson(200, { ok: true, ...result });
+        } catch (err: any) {
+          console.error('[Email Webhook] Erro:', err.message);
+          sendJson(500, { ok: false, error: err.message });
+        }
+      });
+      return;
+    }
+
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('🤖 Budget Buddy Bot está online e operando!');
   }).listen(port, () => {

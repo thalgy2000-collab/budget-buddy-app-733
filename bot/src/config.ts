@@ -10,6 +10,10 @@ export const config = {
   userEmail: process.env.BUDGET_USER_EMAIL || '',
   userPassword: process.env.BUDGET_USER_PASSWORD || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+  // Segredo compartilhado com o Google Apps Script que encaminha e-mails do Mercado Pago
+  emailWebhookSecret: process.env.EMAIL_WEBHOOK_SECRET || '',
+  // Chat do Telegram que recebe os lançamentos vindos de e-mail
+  adminChatId: Number(process.env.TELEGRAM_ADMIN_CHAT_ID || 5750306147),
 };
 
 export function validateConfig() {
