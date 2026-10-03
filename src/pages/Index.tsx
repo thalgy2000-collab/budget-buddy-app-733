@@ -59,7 +59,7 @@ const Index = () => {
             <div className="p-2 rounded-xl gradient-gold">
               <BarChart3 className="h-5 w-5 text-accent-foreground" />
             </div>
-            <h1 className="font-display text-xl font-bold tracking-tight">FinPlan</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Finance Fácil</h1>
           </div>
           <div className="flex items-center gap-3">
             <Button

@@ -47,7 +47,7 @@ const Auth = () => {
               <BarChart3 className="h-6 w-6 text-accent-foreground" />
             </div>
           </div>
-          <CardTitle className="font-display text-2xl">FinPlan</CardTitle>
+          <CardTitle className="font-display text-2xl">Finance Fácil</CardTitle>
           <CardDescription>
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
           </CardDescription>
