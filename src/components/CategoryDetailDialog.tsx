@@ -74,11 +74,14 @@ export function CategoryDetailDialog({
   };
 
   const handleSave = () => {
-    const dateLabel = new Date().toLocaleDateString('pt-BR');
+    // Usa a data do campo "Vencimento"; se estiver vazia, usa a data de hoje
+    const dateLabel = dueDate
+      ? new Date(`${dueDate}T00:00:00`).toLocaleDateString('pt-BR')
+      : new Date().toLocaleDateString('pt-BR');
     const finalSubItems = subItems
       // Descarta sub-itens sem nome e sem valor
       .filter((item) => item.name.trim() !== '' || item.value > 0)
-      // Valor sem identificação recebe rótulo com a data
+      // Valor sem identificação recebe rótulo com a data do input
       .map((item) =>
         item.name.trim() === '' && item.value > 0
           ? { ...item, name: `(valor não identificado) · ${dateLabel}` }
