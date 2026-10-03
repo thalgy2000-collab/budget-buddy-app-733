@@ -74,6 +74,16 @@ export function CategoryDetailDialog({
   };
 
   const handleSave = () => {
+    const dateLabel = new Date().toLocaleDateString('pt-BR');
+    const finalSubItems = subItems
+      // Descarta sub-itens sem nome e sem valor
+      .filter((item) => item.name.trim() !== '' || item.value > 0)
+      // Valor sem identificação recebe rótulo com a data
+      .map((item) =>
+        item.name.trim() === '' && item.value > 0
+          ? { ...item, name: `(valor não identificado) · ${dateLabel}` }
+          : item
+      );
     const delta = subTotal - initialSubTotalRef.current;
     onSave({
       notes: notes || undefined,
@@ -81,7 +91,7 @@ export function CategoryDetailDialog({
       currentInstallment: currentInstallment ? parseInt(currentInstallment) : undefined,
       dueDate: dueDate || undefined,
       paid,
-      subItems: subItems.length > 0 ? subItems : undefined,
+      subItems: finalSubItems.length > 0 ? finalSubItems : undefined,
       actual:
         delta !== 0 && entry
           ? Math.max(0, entry.actual + delta)
