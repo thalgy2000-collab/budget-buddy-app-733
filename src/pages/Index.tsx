@@ -6,7 +6,7 @@ import { MonthSelector } from '@/components/MonthSelector';
 import { SummaryCards } from '@/components/SummaryCards';
 import { BudgetTable } from '@/components/BudgetTable';
 import { AddCategoryDialog } from '@/components/AddCategoryDialog';
-import { BarChart3, Copy, PieChart, LogOut, Eye, EyeOff } from 'lucide-react';
+import { BarChart3, Copy, PieChart, LogOut, Eye, EyeOff, Undo2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [hideValues, setHideValues] = useState(false);
-  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, undoDuplicate, updateEntryDetails } = useBudget();
+  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, undoDuplicate, canUndoDuplicate, updateEntryDetails } = useBudget();
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -73,6 +73,21 @@ const Index = () => {
               {hideValues ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {hideValues ? 'Mostrar' : 'Ocultar'}
             </Button>
+            {canUndoDuplicate && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  undoDuplicate();
+                  toast.success('Duplicação desfeita');
+                }}
+                className="h-8 gap-1.5 text-xs"
+                aria-label="Desfazer duplicação"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                Desfazer
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
