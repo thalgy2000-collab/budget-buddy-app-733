@@ -1114,18 +1114,105 @@ async function handleIncomingEmail(payload: {
   return { status: 'sent' };
 }
 
+// ---------------- NOTIFICAÇÕES DO CELULAR (PICPAY / BANCOS) ----------------
+
+// Evita processar notificações repetidas em um intervalo curto (10 min)
+const recentNotificationHashes = new Map<string, number>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [hash, time] of recentNotificationHashes.entries()) {
+    if (now - time > 60 * 60 * 1000) {
+      recentNotificationHashes.delete(hash);
+    }
+  }
+}, 30 * 60 * 1000);
+
+async function handleIncomingNotification(payload: {
+  app?: string;
+  title?: string;
+  text?: string;
+  date?: string;
+}): Promise<{ status: 'duplicate' | 'ignored' | 'sent'; reason?: string; title?: string; amount?: number }> {
+  const app = (payload.app || 'PicPay').trim();
+  const notifTitle = (payload.title || '').trim();
+  const notifText = (payload.text || '').trim();
+
+  if (!notifText && !notifTitle) {
+    return { status: 'ignored', reason: 'Notificação vazia' };
+  }
+
+  // Deduplicação básica baseada em texto nos últimos 10 minutos
+  const hashKey = `${app}:${notifTitle}:${notifText}`;
+  const now = Date.now();
+  if (recentNotificationHashes.has(hashKey)) {
+    const lastTime = recentNotificationHashes.get(hashKey)!;
+    if (now - lastTime < 10 * 60 * 1000) {
+      return { status: 'duplicate', reason: 'Notificação duplicada recente' };
+    }
+  }
+
+  const chatId = config.adminChatId;
+  let budgetService = userManager.getBudgetService(chatId);
+  if (!budgetService) {
+    await userManager.initDefaultAdmin();
+    budgetService = userManager.getBudgetService(chatId);
+  }
+  if (!budgetService) throw new Error('Conta do administrador não conectada ao Budget Buddy');
+
+  // 1. Classificar se é transação financeira real
+  const classification = await aiService.classifyNotification({ app, title: notifTitle, text: notifText });
+  if (!classification.isTransaction) {
+    console.log(`[Notificação ${app}] Ignorada: "${notifTitle} - ${notifText}" (${classification.reason})`);
+    recentNotificationHashes.set(hashKey, now);
+    return { status: 'ignored', reason: classification.reason };
+  }
+
+  // 2. Extrair dados da transação
+  const notifDate = payload.date ? new Date(payload.date) : new Date();
+  const extracted = await aiService.parseExpense({
+    textPrompt:
+      `Notificação push de aplicativo financeiro (App: ${app}).\n` +
+      `Título: ${notifTitle}\n` +
+      `Texto: ${notifText}`,
+    categories: budgetService.getCategories(),
+    fallbackDate: isNaN(notifDate.getTime()) ? new Date() : notifDate,
+  });
+
+  // 3. Criar pendência e enviar cartão no Telegram
+  const txId = Math.random().toString(36).substring(2, 9);
+  const pending: PendingTransaction = { ...extracted, id: txId, chatId, createdAt: Date.now() };
+  pendingExpenses.set(txId, pending);
+
+  const card = buildConfirmationCard(pending);
+  const appEmoji = app.toLowerCase().includes('picpay') ? '💚' : '📱';
+  const prefix = `${appEmoji} *Nova transação detectada no ${app}*\n_${notifTitle || notifText}_\n\n`;
+
+  await bot.api.sendMessage(chatId, `${prefix}${card.text}`, {
+    reply_markup: card.keyboard,
+    parse_mode: 'Markdown',
+  }).catch(async () => {
+    // Fallback se markdown quebrar por caracteres especiais
+    await bot.api.sendMessage(chatId, card.text, { reply_markup: card.keyboard, parse_mode: 'Markdown' });
+  });
+
+  recentNotificationHashes.set(hashKey, now);
+  console.log(`[Notificação ${app}] Transação enviada para confirmação: ${extracted.title} - R$ ${extracted.amount}`);
+  return { status: 'sent', title: extracted.title, amount: extracted.amount };
+}
+
 // ---------------- INICIALIZAÇÃO ----------------
 
 async function bootstrap() {
   console.log('Iniciando Budget Buddy Bot (Multi-usuário)...');
   await userManager.initDefaultAdmin();
 
-  // Servidor HTTP: health check do Render + webhook de e-mails (Mercado Pago via Google Apps Script)
+  // Servidor HTTP: health check do Render + webhook de e-mails/notificações
   const port = process.env.PORT || 3000;
   http.createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://localhost');
 
-    if (req.method === 'POST' && url.pathname === '/email-webhook') {
+    if (req.method === 'POST' && (url.pathname === '/email-webhook' || url.pathname === '/notification-webhook')) {
       let raw = '';
       req.on('data', (chunk) => {
         raw += chunk;
@@ -1141,10 +1228,15 @@ async function bootstrap() {
           if (!config.emailWebhookSecret || payload.secret !== config.emailWebhookSecret) {
             return sendJson(401, { ok: false, error: 'unauthorized' });
           }
-          const result = await handleIncomingEmail(payload);
-          sendJson(200, { ok: true, ...result });
+          if (url.pathname === '/notification-webhook') {
+            const result = await handleIncomingNotification(payload);
+            return sendJson(200, { ok: true, ...result });
+          } else {
+            const result = await handleIncomingEmail(payload);
+            return sendJson(200, { ok: true, ...result });
+          }
         } catch (err: any) {
-          console.error('[Email Webhook] Erro:', err.message);
+          console.error(`[Webhook ${url.pathname}] Erro:`, err.message);
           sendJson(500, { ok: false, error: err.message });
         }
       });

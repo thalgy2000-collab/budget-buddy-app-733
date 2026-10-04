@@ -215,6 +215,40 @@ Responda APENAS com JSON válido:
     }
   }
 
+  /**
+   * Decide se uma notificação push do celular (ex: PicPay, Nubank, etc.)
+   * descreve uma transação financeira real (compra no cartão, pagamento, Pix, etc.)
+   * ou se é propaganda/aviso genérico.
+   */
+  async classifyNotification(params: { app?: string; title: string; text: string }): Promise<{ isTransaction: boolean; reason: string }> {
+    const prompt = `Você recebe uma notificação push do celular de um banco ou carteira digital (App: ${params.app || 'PicPay'}).
+Decida se ela confirma uma TRANSAÇÃO FINANCEIRA REAL JÁ REALIZADA pelo usuário, com valor em dinheiro:
+- SIM: compra aprovada, compra no cartão de crédito/débito, pagamento realizado, Pix enviado, Pix recebido, transferência realizada/recebida, boleto pago, recarga feita.
+- NÃO: propaganda, limite aumentado, oferta de empréstimo, código de segurança, login em novo aparelho, lembrete de fatura aberta/fechando, dicas, novidades no app.
+
+TÍTULO DA NOTIFICAÇÃO: ${params.title}
+
+CONTEÚDO DA NOTIFICAÇÃO:
+${params.text.substring(0, 1000)}
+
+Responda APENAS com JSON válido:
+{ "isTransaction": true ou false, "reason": "motivo curto" }`;
+
+    try {
+      const text = await this.generateWithFallback([{ text: prompt }]);
+      const cleanJson = text
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      const parsed = JSON.parse(cleanJson);
+      return { isTransaction: parsed.isTransaction === true, reason: parsed.reason || '' };
+    } catch (err: any) {
+      console.warn('[IA] Falha ao classificar notificação:', err.message);
+      return { isTransaction: false, reason: 'falha na classificação' };
+    }
+  }
+
   async detectIntent(params: {
     textPrompt?: string;
     mediaBuffer?: Buffer;
