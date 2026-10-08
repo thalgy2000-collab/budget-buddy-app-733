@@ -38,6 +38,8 @@ export function CategoryDetailDialog({
   const initialSubTotalRef = useRef(0);
   // Valores já somados ao Realizado de cada sub-item (evita contagem dupla)
   const committedValuesRef = useRef<Map<string, number>>(new Map());
+  // Valor realizado mais recente conhecido localmente (protege contra prop defasada)
+  const actualRef = useRef(0);
 
   useEffect(() => {
     if (open) {
