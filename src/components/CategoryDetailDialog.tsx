@@ -82,43 +82,38 @@ export function CategoryDetailDialog({
       ? new Date(`${dueDate}T00:00:00`).toLocaleDateString('pt-BR')
       : new Date().toLocaleDateString('pt-BR');
 
-  const removeSubItem = (id: string) => {
-    const removed = subItems.find((item) => item.id === id);
-    const remaining = subItems.filter((item) => item.id !== id);
-    setSubItems(remaining);
-    // Subtrai o valor do sub-item removido do total da categoria imediatamente
-    if (removed && removed.value > 0 && entry) {
-      initialSubTotalRef.current = remaining.reduce((sum, item) => sum + item.value, 0);
-      const newActual = Math.max(0, actualRef.current - removed.value);
-      actualRef.current = newActual;
-      onSave({
-        subItems: remaining.length > 0 ? remaining : undefined,
-        actual: newActual,
-      });
-    }
-  };
-
-  // Soma o valor digitado do sub-item ao Realizado da categoria imediatamente
-  const commitSubItemValue = (id: string) => {
-    const item = subItems.find((i) => i.id === id);
-    if (!item || !entry) return;
-    const delta = item.value - (committedValuesRef.current.get(id) ?? 0);
-    if (delta === 0) return;
-    committedValuesRef.current.set(id, item.value);
-    initialSubTotalRef.current = subItems.reduce((sum, i) => sum + i.value, 0);
-    const newActual = Math.max(0, actualRef.current + delta);
-    actualRef.current = newActual;
-    const persisted = subItems
+  const persistSubItems = (items: SubItem[]) => {
+    if (!entry) return;
+    const persisted = items
       .filter((i) => i.name.trim() !== '' || i.value > 0)
       .map((i) =>
         i.name.trim() === '' && i.value > 0
           ? { ...i, name: `(valor não identificado) · ${getDateLabel()}` }
           : i
       );
+    // O Realizado da categoria é sempre o subtotal dos sub-itens
+    const newActual = persisted.reduce((sum, i) => sum + i.value, 0);
+    actualRef.current = newActual;
+    initialSubTotalRef.current = newActual;
     onSave({
       subItems: persisted.length > 0 ? persisted : undefined,
       actual: newActual,
     });
+  };
+
+  const removeSubItem = (id: string) => {
+    const remaining = subItems.filter((item) => item.id !== id);
+    setSubItems(remaining);
+    persistSubItems(remaining);
+  };
+
+  // Ao sair do campo de valor, o Realizado passa a ser o subtotal dos sub-itens
+  const commitSubItemValue = (id: string) => {
+    const item = subItems.find((i) => i.id === id);
+    if (!item || !entry) return;
+    if ((committedValuesRef.current.get(id) ?? 0) === item.value) return;
+    committedValuesRef.current.set(id, item.value);
+    persistSubItems(subItems);
   };
 
   const handleSave = () => {
@@ -131,15 +126,10 @@ export function CategoryDetailDialog({
           ? { ...item, name: `(valor não identificado) · ${getDateLabel()}` }
           : item
       );
-    // Ajusta valores ainda não confirmados (ex.: Enter sem blur); o que já foi
-    // somado na hora já está refletido em initialSubTotalRef/actualRef
-    const delta = subTotal - initialSubTotalRef.current;
-    let newActual: number | undefined;
-    if (delta !== 0 && entry) {
-      newActual = Math.max(0, actualRef.current + delta);
-      actualRef.current = newActual;
-      initialSubTotalRef.current = subTotal;
-    }
+    // O Realizado da categoria é sempre o subtotal dos sub-itens
+    const newActual = finalSubItems.reduce((sum, item) => sum + item.value, 0);
+    actualRef.current = newActual;
+    initialSubTotalRef.current = newActual;
     onSave({
       notes: notes || undefined,
       installments: installments ? parseInt(installments) : undefined,
