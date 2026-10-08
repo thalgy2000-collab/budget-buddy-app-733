@@ -36,6 +36,10 @@ export function CategoryDetailDialog({
   const [paid, setPaid] = useState(false);
   const [subItems, setSubItems] = useState<SubItem[]>([]);
   const initialSubTotalRef = useRef(0);
+  // Valores já somados ao Realizado de cada sub-item (evita contagem dupla)
+  const committedValuesRef = useRef<Map<string, number>>(new Map());
+  // Valor realizado mais recente conhecido localmente (protege contra prop defasada)
+  const actualRef = useRef(0);
 
   useEffect(() => {
     if (open) {
@@ -49,6 +53,10 @@ export function CategoryDetailDialog({
         (sum, item) => sum + item.value,
         0
       );
+      committedValuesRef.current = new Map(
+        (entry?.subItems || []).map((item) => [item.id, item.value])
+      );
+      actualRef.current = entry?.actual ?? 0;
     }
   }, [open, entry]);
 
@@ -69,6 +77,11 @@ export function CategoryDetailDialog({
     );
   };
 
+  const getDateLabel = () =>
+    dueDate
+      ? new Date(`${dueDate}T00:00:00`).toLocaleDateString('pt-BR')
+      : new Date().toLocaleDateString('pt-BR');
+
   const removeSubItem = (id: string) => {
     const removed = subItems.find((item) => item.id === id);
     const remaining = subItems.filter((item) => item.id !== id);
@@ -76,28 +89,57 @@ export function CategoryDetailDialog({
     // Subtrai o valor do sub-item removido do total da categoria imediatamente
     if (removed && removed.value > 0 && entry) {
       initialSubTotalRef.current = remaining.reduce((sum, item) => sum + item.value, 0);
+      const newActual = Math.max(0, actualRef.current - removed.value);
+      actualRef.current = newActual;
       onSave({
         subItems: remaining.length > 0 ? remaining : undefined,
-        actual: Math.max(0, entry.actual - removed.value),
+        actual: newActual,
       });
     }
   };
 
+  // Soma o valor digitado do sub-item ao Realizado da categoria imediatamente
+  const commitSubItemValue = (id: string) => {
+    const item = subItems.find((i) => i.id === id);
+    if (!item || !entry) return;
+    const delta = item.value - (committedValuesRef.current.get(id) ?? 0);
+    if (delta === 0) return;
+    committedValuesRef.current.set(id, item.value);
+    initialSubTotalRef.current = subItems.reduce((sum, i) => sum + i.value, 0);
+    const newActual = Math.max(0, actualRef.current + delta);
+    actualRef.current = newActual;
+    const persisted = subItems
+      .filter((i) => i.name.trim() !== '' || i.value > 0)
+      .map((i) =>
+        i.name.trim() === '' && i.value > 0
+          ? { ...i, name: `(valor não identificado) · ${getDateLabel()}` }
+          : i
+      );
+    onSave({
+      subItems: persisted.length > 0 ? persisted : undefined,
+      actual: newActual,
+    });
+  };
+
   const handleSave = () => {
-    // Usa a data do campo "Vencimento"; se estiver vazia, usa a data de hoje
-    const dateLabel = dueDate
-      ? new Date(`${dueDate}T00:00:00`).toLocaleDateString('pt-BR')
-      : new Date().toLocaleDateString('pt-BR');
     const finalSubItems = subItems
       // Descarta sub-itens sem nome e sem valor
       .filter((item) => item.name.trim() !== '' || item.value > 0)
       // Valor sem identificação recebe rótulo com a data do input
       .map((item) =>
         item.name.trim() === '' && item.value > 0
-          ? { ...item, name: `(valor não identificado) · ${dateLabel}` }
+          ? { ...item, name: `(valor não identificado) · ${getDateLabel()}` }
           : item
       );
+    // Ajusta valores ainda não confirmados (ex.: Enter sem blur); o que já foi
+    // somado na hora já está refletido em initialSubTotalRef/actualRef
     const delta = subTotal - initialSubTotalRef.current;
+    let newActual: number | undefined;
+    if (delta !== 0 && entry) {
+      newActual = Math.max(0, actualRef.current + delta);
+      actualRef.current = newActual;
+      initialSubTotalRef.current = subTotal;
+    }
     onSave({
       notes: notes || undefined,
       installments: installments ? parseInt(installments) : undefined,
@@ -105,10 +147,7 @@ export function CategoryDetailDialog({
       dueDate: dueDate || undefined,
       paid,
       subItems: finalSubItems.length > 0 ? finalSubItems : undefined,
-      actual:
-        delta !== 0 && entry
-          ? Math.max(0, entry.actual + delta)
-          : undefined,
+      actual: newActual,
     });
     onOpenChange(false);
   };
@@ -225,6 +264,7 @@ export function CategoryDetailDialog({
                       placeholder="Valor"
                       value={item.value || ''}
                       onChange={(e) => updateSubItem(item.id, 'value', e.target.value)}
+                      onBlur={() => commitSubItemValue(item.id)}
                       className="text-sm h-8 w-28 text-right"
                       min="0"
                       step="0.01"
