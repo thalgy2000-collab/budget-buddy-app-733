@@ -56,6 +56,7 @@ export function CategoryDetailDialog({
       committedValuesRef.current = new Map(
         (entry?.subItems || []).map((item) => [item.id, item.value])
       );
+      actualRef.current = entry?.actual ?? 0;
     }
   }, [open, entry]);
 
