@@ -36,6 +36,8 @@ export function CategoryDetailDialog({
   const [paid, setPaid] = useState(false);
   const [subItems, setSubItems] = useState<SubItem[]>([]);
   const initialSubTotalRef = useRef(0);
+  // Valores já somados ao Realizado de cada sub-item (evita contagem dupla)
+  const committedValuesRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (open) {
