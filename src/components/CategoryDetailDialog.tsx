@@ -126,15 +126,10 @@ export function CategoryDetailDialog({
           ? { ...item, name: `(valor não identificado) · ${getDateLabel()}` }
           : item
       );
-    // Ajusta valores ainda não confirmados (ex.: Enter sem blur); o que já foi
-    // somado na hora já está refletido em initialSubTotalRef/actualRef
-    const delta = subTotal - initialSubTotalRef.current;
-    let newActual: number | undefined;
-    if (delta !== 0 && entry) {
-      newActual = Math.max(0, actualRef.current + delta);
-      actualRef.current = newActual;
-      initialSubTotalRef.current = subTotal;
-    }
+    // O Realizado da categoria é sempre o subtotal dos sub-itens
+    const newActual = finalSubItems.reduce((sum, item) => sum + item.value, 0);
+    actualRef.current = newActual;
+    initialSubTotalRef.current = newActual;
     onSave({
       notes: notes || undefined,
       installments: installments ? parseInt(installments) : undefined,
