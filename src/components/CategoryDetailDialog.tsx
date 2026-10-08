@@ -264,6 +264,7 @@ export function CategoryDetailDialog({
                       placeholder="Valor"
                       value={item.value || ''}
                       onChange={(e) => updateSubItem(item.id, 'value', e.target.value)}
+                      onBlur={() => commitSubItemValue(item.id)}
                       className="text-sm h-8 w-28 text-right"
                       min="0"
                       step="0.01"
