@@ -122,20 +122,24 @@ export function CategoryDetailDialog({
   };
 
   const handleSave = () => {
-    // Usa a data do campo "Vencimento"; se estiver vazia, usa a data de hoje
-    const dateLabel = dueDate
-      ? new Date(`${dueDate}T00:00:00`).toLocaleDateString('pt-BR')
-      : new Date().toLocaleDateString('pt-BR');
     const finalSubItems = subItems
       // Descarta sub-itens sem nome e sem valor
       .filter((item) => item.name.trim() !== '' || item.value > 0)
       // Valor sem identificação recebe rótulo com a data do input
       .map((item) =>
         item.name.trim() === '' && item.value > 0
-          ? { ...item, name: `(valor não identificado) · ${dateLabel}` }
+          ? { ...item, name: `(valor não identificado) · ${getDateLabel()}` }
           : item
       );
+    // Ajusta valores ainda não confirmados (ex.: Enter sem blur); o que já foi
+    // somado na hora já está refletido em initialSubTotalRef/actualRef
     const delta = subTotal - initialSubTotalRef.current;
+    let newActual: number | undefined;
+    if (delta !== 0 && entry) {
+      newActual = Math.max(0, actualRef.current + delta);
+      actualRef.current = newActual;
+      initialSubTotalRef.current = subTotal;
+    }
     onSave({
       notes: notes || undefined,
       installments: installments ? parseInt(installments) : undefined,
@@ -143,10 +147,7 @@ export function CategoryDetailDialog({
       dueDate: dueDate || undefined,
       paid,
       subItems: finalSubItems.length > 0 ? finalSubItems : undefined,
-      actual:
-        delta !== 0 && entry
-          ? Math.max(0, entry.actual + delta)
-          : undefined,
+      actual: newActual,
     });
     onOpenChange(false);
   };
