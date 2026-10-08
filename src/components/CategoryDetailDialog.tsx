@@ -70,7 +70,17 @@ export function CategoryDetailDialog({
   };
 
   const removeSubItem = (id: string) => {
-    setSubItems((prev) => prev.filter((item) => item.id !== id));
+    const removed = subItems.find((item) => item.id === id);
+    const remaining = subItems.filter((item) => item.id !== id);
+    setSubItems(remaining);
+    // Subtrai o valor do sub-item removido do total da categoria imediatamente
+    if (removed && removed.value > 0 && entry) {
+      initialSubTotalRef.current = remaining.reduce((sum, item) => sum + item.value, 0);
+      onSave({
+        subItems: remaining.length > 0 ? remaining : undefined,
+        actual: Math.max(0, entry.actual - removed.value),
+      });
+    }
   };
 
   const handleSave = () => {
