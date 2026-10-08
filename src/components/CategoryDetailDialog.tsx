@@ -51,6 +51,9 @@ export function CategoryDetailDialog({
         (sum, item) => sum + item.value,
         0
       );
+      committedValuesRef.current = new Map(
+        (entry?.subItems || []).map((item) => [item.id, item.value])
+      );
     }
   }, [open, entry]);
 
