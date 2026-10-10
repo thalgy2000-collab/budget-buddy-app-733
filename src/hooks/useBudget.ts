@@ -252,20 +252,6 @@ export function useBudget() {
     [pushUndo]
   );
 
-  // ---------- Undo stack (Ctrl+Z) ----------
-  interface Snapshot {
-    entries: BudgetEntry[];
-    categories: Category[];
-  }
-  const [undoStack, setUndoStack] = useState<Snapshot[]>([]);
-
-  const pushUndo = useCallback(() => {
-    setUndoStack((prev) => [
-      ...prev.slice(-29),
-      { entries: JSON.parse(JSON.stringify(entries)), categories: JSON.parse(JSON.stringify(categories)) },
-    ]);
-  }, [entries, categories]);
-
   const undo = useCallback(async () => {
     if (!user) return;
     const snap = undoStack[undoStack.length - 1];
