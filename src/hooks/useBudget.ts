@@ -376,7 +376,7 @@ export function useBudget() {
         setEntries((prev) => [...prev, toEntry(data)]);
       }
     },
-    [user, entries]
+    [user, entries, pushUndo]
   );
 
   return {
@@ -390,8 +390,8 @@ export function useBudget() {
     renameCategory,
     removeCategory,
     duplicatePlanned,
-    undoDuplicate,
-    canUndoDuplicate: duplicateBackup !== null,
+    undo,
+    canUndo: undoStack.length > 0,
     updateEntryDetails,
   };
 }
