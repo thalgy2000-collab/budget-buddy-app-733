@@ -235,7 +235,7 @@ export function useBudget() {
       setCategories((prev) => prev.filter((c) => c.id !== id));
       setEntries((prev) => prev.filter((e) => e.categoryId !== id));
     },
-    []
+    [pushUndo]
   );
 
   // ---------- Undo stack (Ctrl+Z) ----------
@@ -332,6 +332,7 @@ export function useBudget() {
   const updateEntryDetails = useCallback(
     async (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
       if (!user) return;
+      pushUndo();
       const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
       const dbDetails: any = {};
       if (details.notes !== undefined) dbDetails.notes = details.notes;
