@@ -131,9 +131,24 @@ export function useBudget() {
     [entries]
   );
 
+  // ---------- Undo stack (Ctrl+Z) ----------
+  interface Snapshot {
+    entries: BudgetEntry[];
+    categories: Category[];
+  }
+  const [undoStack, setUndoStack] = useState<Snapshot[]>([]);
+
+  const pushUndo = useCallback(() => {
+    setUndoStack((prev) => [
+      ...prev.slice(-29),
+      { entries: JSON.parse(JSON.stringify(entries)), categories: JSON.parse(JSON.stringify(categories)) },
+    ]);
+  }, [entries, categories]);
+
   const upsertEntry = useCallback(
     async (categoryId: string, month: string, planned: number, actual: number) => {
       if (!user) return;
+      pushUndo();
       const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
       const now = new Date().toISOString();
       const record = { date: now, planned, actual };
@@ -165,7 +180,7 @@ export function useBudget() {
         setEntries((prev) => [...prev, toEntry(data)]);
       }
     },
-    [user, entries]
+    [user, entries, pushUndo]
   );
 
   const getMonthSummary = useCallback(
@@ -194,6 +209,7 @@ export function useBudget() {
   const addCategory = useCallback(
     async (category: Category) => {
       if (!user) return;
+      pushUndo();
       const { data, error } = await supabase
         .from('categories')
         .insert({
@@ -209,83 +225,114 @@ export function useBudget() {
       if (error) { toast.error('Erro ao adicionar categoria'); return; }
       setCategories((prev) => [...prev, toCategory(data)]);
     },
-    [user, categories]
+    [user, categories, pushUndo]
   );
 
   const renameCategory = useCallback(
     async (id: string, newName: string) => {
+      pushUndo();
       const { error } = await supabase
         .from('categories')
         .update({ name: newName })
         .eq('id', id);
       if (error) { toast.error('Erro ao renomear'); return; }
-      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
     },
-    []
+    [pushUndo]
   );
 
   const removeCategory = useCallback(
     async (id: string) => {
+      pushUndo();
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (error) { toast.error('Erro ao remover'); return; }
       setCategories((prev) => prev.filter((c) => c.id !== id));
       setEntries((prev) => prev.filter((e) => e.categoryId !== id));
     },
-    []
+    [pushUndo]
   );
 
-  const [duplicateBackup, setDuplicateBackup] = useState<{
-    insertedIds: string[];
-    updated: { id: string; planned: number }[];
-  } | null>(null);
+  const undo = useCallback(async () => {
+    if (!user) return;
+    const snap = undoStack[undoStack.length - 1];
+    if (!snap) return;
+    setUndoStack((prev) => prev.slice(0, -1));
+
+    // Restore entries: delete rows not in snapshot, upsert snapshot rows
+    const snapEntryIds = snap.entries.map((e) => e.id);
+    const entriesToDelete = entries.filter((e) => !snapEntryIds.includes(e.id)).map((e) => e.id);
+    if (entriesToDelete.length > 0) {
+      await supabase.from('budget_entries').delete().in('id', entriesToDelete);
+    }
+    for (const e of snap.entries) {
+      await supabase.from('budget_entries').upsert({
+        id: e.id,
+        user_id: user.id,
+        category_id: e.categoryId,
+        month: e.month,
+        planned: e.planned,
+        actual: e.actual,
+        notes: e.notes ?? null,
+        installments: e.installments ?? null,
+        current_installment: e.currentInstallment ?? null,
+        due_date: e.dueDate ?? null,
+        paid: e.paid ?? null,
+        sub_items: e.subItems ?? null,
+        history: e.history ?? null,
+      } as any);
+    }
+
+    // Restore categories
+    const snapCatIds = snap.categories.map((c) => c.id);
+    const catsToDelete = categories.filter((c) => !snapCatIds.includes(c.id)).map((c) => c.id);
+    if (catsToDelete.length > 0) {
+      await supabase.from('categories').delete().in('id', catsToDelete);
+    }
+    for (const c of snap.categories) {
+      await supabase.from('categories').upsert({
+        id: c.id,
+        user_id: user.id,
+        key: c.id,
+        name: c.name,
+        type: c.type,
+        icon: c.icon,
+      } as any);
+    }
+
+    setEntries(snap.entries);
+    setCategories(snap.categories);
+  }, [user, undoStack, entries, categories]);
 
   const duplicatePlanned = useCallback(
     async (fromMonth: string, toMonth: string) => {
       if (!user) return;
+      pushUndo();
       const sourceEntries = entries.filter((e) => e.month === fromMonth);
-      const insertedIds: string[] = [];
-      const updated: { id: string; planned: number }[] = [];
       for (const src of sourceEntries) {
         const existing = entries.find((e) => e.categoryId === src.categoryId && e.month === toMonth);
         if (existing) {
-          updated.push({ id: existing.id, planned: existing.planned });
           await supabase.from('budget_entries').update({ planned: src.planned }).eq('id', existing.id);
         } else {
-          const { data } = await supabase.from('budget_entries').insert({
+          await supabase.from('budget_entries').insert({
             user_id: user.id,
             category_id: src.categoryId,
             month: toMonth,
             planned: src.planned,
             actual: 0,
-          }).select('id').single();
-          if (data) insertedIds.push(data.id);
+          });
         }
       }
-      setDuplicateBackup({ insertedIds, updated });
       // Reload entries
       const { data } = await supabase.from('budget_entries').select('*');
       setEntries((data || []).map(toEntry));
     },
-    [user, entries]
+    [user, entries, pushUndo]
   );
-
-  const undoDuplicate = useCallback(async () => {
-    if (!duplicateBackup) return;
-    const { insertedIds, updated } = duplicateBackup;
-    if (insertedIds.length > 0) {
-      await supabase.from('budget_entries').delete().in('id', insertedIds);
-    }
-    for (const u of updated) {
-      await supabase.from('budget_entries').update({ planned: u.planned }).eq('id', u.id);
-    }
-    setDuplicateBackup(null);
-    const { data } = await supabase.from('budget_entries').select('*');
-    setEntries((data || []).map(toEntry));
-  }, [duplicateBackup]);
 
   const updateEntryDetails = useCallback(
     async (categoryId: string, month: string, details: Partial<BudgetEntry>) => {
       if (!user) return;
+      pushUndo();
       const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
       const dbDetails: any = {};
       if (details.notes !== undefined) dbDetails.notes = details.notes;
@@ -329,7 +376,7 @@ export function useBudget() {
         setEntries((prev) => [...prev, toEntry(data)]);
       }
     },
-    [user, entries]
+    [user, entries, pushUndo]
   );
 
   return {
@@ -343,8 +390,8 @@ export function useBudget() {
     renameCategory,
     removeCategory,
     duplicatePlanned,
-    undoDuplicate,
-    canUndoDuplicate: duplicateBackup !== null,
+    undo,
+    canUndo: undoStack.length > 0,
     updateEntryDetails,
   };
 }
