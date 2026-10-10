@@ -195,6 +195,7 @@ export function useBudget() {
   const addCategory = useCallback(
     async (category: Category) => {
       if (!user) return;
+      pushUndo();
       const { data, error } = await supabase
         .from('categories')
         .insert({
@@ -210,23 +211,25 @@ export function useBudget() {
       if (error) { toast.error('Erro ao adicionar categoria'); return; }
       setCategories((prev) => [...prev, toCategory(data)]);
     },
-    [user, categories]
+    [user, categories, pushUndo]
   );
 
   const renameCategory = useCallback(
     async (id: string, newName: string) => {
+      pushUndo();
       const { error } = await supabase
         .from('categories')
         .update({ name: newName })
         .eq('id', id);
       if (error) { toast.error('Erro ao renomear'); return; }
-      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
     },
-    []
+    [pushUndo]
   );
 
   const removeCategory = useCallback(
     async (id: string) => {
+      pushUndo();
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (error) { toast.error('Erro ao remover'); return; }
       setCategories((prev) => prev.filter((c) => c.id !== id));
