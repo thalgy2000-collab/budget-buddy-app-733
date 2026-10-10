@@ -131,6 +131,20 @@ export function useBudget() {
     [entries]
   );
 
+  // ---------- Undo stack (Ctrl+Z) ----------
+  interface Snapshot {
+    entries: BudgetEntry[];
+    categories: Category[];
+  }
+  const [undoStack, setUndoStack] = useState<Snapshot[]>([]);
+
+  const pushUndo = useCallback(() => {
+    setUndoStack((prev) => [
+      ...prev.slice(-29),
+      { entries: JSON.parse(JSON.stringify(entries)), categories: JSON.parse(JSON.stringify(categories)) },
+    ]);
+  }, [entries, categories]);
+
   const upsertEntry = useCallback(
     async (categoryId: string, month: string, planned: number, actual: number) => {
       if (!user) return;
