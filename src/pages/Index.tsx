@@ -37,8 +37,8 @@ const Index = () => {
     toast.success(`Valores planejados de ${fromLabel} copiados para ${currentLabel}`, {
       action: {
         label: 'Desfazer',
-        onClick: () => {
-          undoDuplicate();
+          onClick: () => {
+          undo();
           toast.success('Duplicação desfeita');
         },
       },
@@ -48,17 +48,17 @@ const Index = () => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && canUndoDuplicate) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && canUndo) {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
         e.preventDefault();
-        undoDuplicate();
-        toast.success('Duplicação desfeita');
+        undo();
+        toast.success('Alteração desfeita');
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canUndoDuplicate, undoDuplicate]);
+  }, [canUndo, undo]);
 
   const summary = getMonthSummary(month);
   const incomeCategories = categories.filter((c) => c.type === 'income');
@@ -90,16 +90,16 @@ const Index = () => {
               {hideValues ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {hideValues ? 'Mostrar' : 'Ocultar'}
             </Button>
-            {canUndoDuplicate && (
+            {canUndo && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  undoDuplicate();
-                  toast.success('Duplicação desfeita');
+                  undo();
+                  toast.success('Alteração desfeita');
                 }}
                 className="h-8 gap-1.5 text-xs"
-                aria-label="Desfazer duplicação"
+                aria-label="Desfazer última alteração"
               >
                 <Undo2 className="h-3.5 w-3.5" />
                 Desfazer
@@ -167,16 +167,16 @@ const Index = () => {
                   Copiar planejado de {nextLabel}
                 </DropdownMenuItem>
 
-                {canUndoDuplicate && (
+                {canUndo && (
                   <DropdownMenuItem
                     onClick={() => {
-                      undoDuplicate();
-                      toast.success('Duplicação desfeita');
+                      undo();
+                      toast.success('Alteração desfeita');
                     }}
                     className="gap-2 text-xs"
                   >
                     <Undo2 className="h-4 w-4" />
-                    Desfazer duplicação
+                    Desfazer alteração
                   </DropdownMenuItem>
                 )}
 
