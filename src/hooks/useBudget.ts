@@ -134,6 +134,7 @@ export function useBudget() {
   const upsertEntry = useCallback(
     async (categoryId: string, month: string, planned: number, actual: number) => {
       if (!user) return;
+      pushUndo();
       const existing = entries.find((e) => e.categoryId === categoryId && e.month === month);
       const now = new Date().toISOString();
       const record = { date: now, planned, actual };
@@ -165,7 +166,7 @@ export function useBudget() {
         setEntries((prev) => [...prev, toEntry(data)]);
       }
     },
-    [user, entries]
+    [user, entries, pushUndo]
   );
 
   const getMonthSummary = useCallback(
