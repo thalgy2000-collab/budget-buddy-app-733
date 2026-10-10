@@ -46,6 +46,20 @@ const Index = () => {
     });
   };
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && canUndoDuplicate) {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        e.preventDefault();
+        undoDuplicate();
+        toast.success('Duplicação desfeita');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canUndoDuplicate, undoDuplicate]);
+
   const summary = getMonthSummary(month);
   const incomeCategories = categories.filter((c) => c.type === 'income');
   const expenseCategories = categories.filter((c) => c.type === 'expense');
