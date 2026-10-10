@@ -52,50 +52,51 @@ export function EntryHistoryDialog({
             Nenhuma alteração registrada.
           </p>
         ) : (
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-1">
-              <div className="grid grid-cols-3 text-xs text-muted-foreground uppercase tracking-wider py-2 px-1 border-b border-border/50">
-                <span>Data</span>
-                <span className="text-right">Planejado (+)</span>
-                <span className="text-right">Realizado (+)</span>
-              </div>
-              {[...rows].reverse().map((record, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-3 text-sm py-2 px-1 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
-                >
-                  <span className="text-muted-foreground text-xs">
-                    {format(new Date(record.date), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
-                  </span>
-                  <span className="text-right">
-                    {record.plannedDelta !== 0 ? (
-                      <>
-                        {record.plannedDelta > 0 ? '+' : '−'}
-                        {formatCurrency(Math.abs(record.plannedDelta))}
-                      </>
+          <ScrollArea className="max-h-[65vh] pr-3">
+            <ol className="relative ml-3 border-l border-border py-2">
+              {[...rows].reverse().map((record, i) => {
+                const isFirst = i === 0;
+                const renderDelta = (delta: number, total: number, label: string) => (
+                  <div className="flex-1 rounded-lg bg-muted/40 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+                    {delta !== 0 ? (
+                      <p className={`text-base font-semibold ${delta > 0 ? 'text-primary' : 'text-destructive'}`}>
+                        {delta > 0 ? '+' : '−'} {formatCurrency(Math.abs(delta))}
+                      </p>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <p className="text-base text-muted-foreground">sem alteração</p>
                     )}
-                    <span className="block text-[10px] text-muted-foreground">
-                      total {formatCurrency(record.planned)}
-                    </span>
-                  </span>
-                  <span className="text-right font-medium">
-                    {record.actualDelta !== 0 ? (
-                      <>
-                        {record.actualDelta > 0 ? '+' : '−'}
-                        {formatCurrency(Math.abs(record.actualDelta))}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground font-normal">—</span>
-                    )}
-                    <span className="block text-[10px] text-muted-foreground font-normal">
-                      total {formatCurrency(record.actual)}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
+                    <p className="text-xs text-muted-foreground">Total: {formatCurrency(total)}</p>
+                  </div>
+                );
+                return (
+                  <li key={i} className="mb-5 ml-5 last:mb-0">
+                    <span
+                      className={`absolute -left-[7px] mt-1.5 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                        isFirst ? 'bg-primary' : 'bg-muted-foreground/50'
+                      }`}
+                    />
+                    <div className="mb-2 flex items-center gap-2">
+                      <time className="text-sm font-medium text-foreground">
+                        {format(new Date(record.date), "dd 'de' MMM yyyy", { locale: ptBR })}
+                      </time>
+                      <span className="text-xs text-muted-foreground">
+                        às {format(new Date(record.date), 'HH:mm')}
+                      </span>
+                      {isFirst && (
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          Mais recente
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {renderDelta(record.plannedDelta, record.planned, 'Planejado')}
+                      {renderDelta(record.actualDelta, record.actual, 'Realizado')}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </ScrollArea>
         )}
       </DialogContent>
