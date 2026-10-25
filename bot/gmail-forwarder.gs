@@ -1,5 +1,5 @@
 /**
- * Finance Fácil — Encaminhador de e-mails do Mercado Pago para o bot do Telegram
+ * Finance Fácil — Encaminhador de e-mails do Mercado Pago para o bot do WhatsApp
  *
  * Como usar:
  * 1. Acesse https://script.google.com (logado no Gmail que recebe os e-mails do Mercado Pago)

@@ -4,21 +4,28 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 export const config = {
-  telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  // Opcional: número de WhatsApp do admin (ex: "5534999999999").
+  // Se deixado em branco, o bot usa automaticamente o próprio número conectado no QR Code!
+  whatsappAdminPhone: (process.env.WHATSAPP_ADMIN_PHONE || '').replace(/\D/g, ''),
+
+  // Pasta onde a sessão do WhatsApp (QR Code) fica salva
+  whatsappAuthDir: process.env.WHATSAPP_AUTH_DIR || path.resolve(process.cwd(), 'data', 'whatsapp_auth'),
+
+  // Supabase / Budget Buddy
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
   userEmail: process.env.BUDGET_USER_EMAIL || '',
   userPassword: process.env.BUDGET_USER_PASSWORD || '',
+
+  // Google Gemini
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  // Segredo compartilhado com o Google Apps Script que encaminha e-mails do Mercado Pago
+
+  // Segredo compartilhado com o Google Apps Script (e-mails do Mercado Pago) e app de notificações
   emailWebhookSecret: process.env.EMAIL_WEBHOOK_SECRET || '',
-  // Chat do Telegram que recebe os lançamentos vindos de e-mail
-  adminChatId: Number(process.env.TELEGRAM_ADMIN_CHAT_ID || 5750306147),
 };
 
 export function validateConfig() {
   const missing: string[] = [];
-  if (!config.telegramToken) missing.push('TELEGRAM_BOT_TOKEN');
   if (!config.supabaseUrl) missing.push('SUPABASE_URL');
   if (!config.supabaseAnonKey) missing.push('SUPABASE_ANON_KEY');
   if (!config.userEmail) missing.push('BUDGET_USER_EMAIL');
