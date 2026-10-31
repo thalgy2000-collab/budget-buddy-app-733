@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
 import { Category, TransactionType } from '@/types/finance';
+import { IconPicker } from './IconPicker';
+import { CategoryIcon } from './CategoryIcon';
 
 interface AddCategoryDialogProps {
   onAdd: (category: Category) => void;
@@ -20,6 +22,7 @@ export function AddCategoryDialog({ onAdd }: AddCategoryDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
+  const [icon, setIcon] = useState('MoreHorizontal');
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -27,8 +30,9 @@ export function AddCategoryDialog({ onAdd }: AddCategoryDialogProps) {
       id: name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
       name: name.trim(),
       type,
-      icon: type === 'income' ? 'Plus' : 'MoreHorizontal',
+      icon,
     });
+    setIcon('MoreHorizontal');
     setName('');
     setOpen(false);
   };
@@ -55,6 +59,15 @@ export function AddCategoryDialog({ onAdd }: AddCategoryDialogProps) {
               placeholder="Ex: Assinaturas, Academia, Aluguel..."
               maxLength={50}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Ícone</Label>
+            <IconPicker value={icon} onChange={setIcon}>
+              <Button type="button" variant="outline" className="w-full justify-start gap-2">
+                <CategoryIcon name={icon} className="h-4 w-4" />
+                Escolher ícone
+              </Button>
+            </IconPicker>
           </div>
           <div className="space-y-2">
             <Label>Tipo</Label>
