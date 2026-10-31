@@ -11,6 +11,7 @@ import {
 import { BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { getFilteredChartSummary } from '@/lib/chartSummary';
 
 const COLORS = [
   'hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(142, 76%, 36%)',
@@ -25,11 +26,16 @@ function formatCurrency(value: number) {
 
 const Charts = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const { categories, getEntry, entries, getMonthSummary } = useBudget();
+  const { categories, getEntry, entries } = useBudget();
   const navigate = useNavigate();
 
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => categories.map((c) => c.id));
+  // null means the default selection, including categories loaded asynchronously.
+  // An explicit empty array must remain empty after the user clicks Limpar.
+  const [categorySelection, setSelectedCategories] = useState<string[] | null>(null);
+  const selectedCategories = categorySelection ?? categories
+    .filter((c) => typeFilter === 'all' || c.type === typeFilter)
+    .map((c) => c.id);
   const [trendMonths, setTrendMonths] = useState(6);
 
   // When type filter changes, reset selected categories to match
@@ -51,7 +57,7 @@ const Charts = () => {
   const showIncome = typeFilter === 'all' || typeFilter === 'income';
   const showExpense = typeFilter === 'all' || typeFilter === 'expense';
 
-  const summary = getMonthSummary(month);
+  const summary = getFilteredChartSummary(entries, categories, month, selectedCategories, typeFilter);
 
   const expenseBarData = filteredExpense.map((cat) => {
     const entry = getEntry(cat.id, month);
@@ -73,7 +79,7 @@ const Charts = () => {
   const currentDate = parse(month, 'yyyy-MM', new Date());
   const trendData = Array.from({ length: trendMonths }, (_, i) => {
     const m = format(subMonths(currentDate, trendMonths - 1 - i), 'yyyy-MM');
-    const s = getMonthSummary(m);
+    const s = getFilteredChartSummary(entries, categories, m, selectedCategories, typeFilter);
     return {
       month: format(parse(m, 'yyyy-MM', new Date()), 'MMM/yy', { locale: ptBR }),
       Receita: s.actualIncome,
