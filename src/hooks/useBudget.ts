@@ -241,6 +241,19 @@ export function useBudget() {
     [pushUndo]
   );
 
+  const updateCategoryIcon = useCallback(
+    async (id: string, icon: string) => {
+      pushUndo();
+      const { error } = await supabase
+        .from('categories')
+        .update({ icon })
+        .eq('id', id);
+      if (error) { toast.error('Erro ao trocar ícone'); return; }
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, icon } : c)));
+    },
+    [pushUndo]
+  );
+
   const removeCategory = useCallback(
     async (id: string) => {
       pushUndo();
@@ -388,6 +401,7 @@ export function useBudget() {
     getMonthSummary,
     addCategory,
     renameCategory,
+    updateCategoryIcon,
     removeCategory,
     duplicatePlanned,
     undo,

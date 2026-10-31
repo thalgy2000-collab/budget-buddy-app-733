@@ -11,6 +11,7 @@ import { CategoryDetailDialog } from './CategoryDetailDialog';
 import { EntryHistoryDialog } from './EntryHistoryDialog';
 import { Badge } from '@/components/ui/badge';
 import { ValueSumInput } from './ValueSumInput';
+import { IconPicker } from './IconPicker';
 
 interface BudgetTableProps {
   title: string;
@@ -20,6 +21,7 @@ interface BudgetTableProps {
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
   updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
   renameCategory: (id: string, newName: string) => void;
+  updateCategoryIcon: (id: string, icon: string) => void;
   hideValues?: boolean;
 }
 
@@ -40,7 +42,7 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, hideValues }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, updateCategoryIcon, hideValues }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
@@ -131,9 +133,15 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                 <tr key={cat.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-secondary shrink-0">
-                        <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      <IconPicker value={cat.icon} onChange={(icon) => updateCategoryIcon(cat.id, icon)}>
+                        <button
+                          type="button"
+                          title="Trocar ícone"
+                          className="p-1.5 rounded-lg bg-secondary shrink-0 hover:bg-accent transition-colors cursor-pointer"
+                        >
+                          <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </IconPicker>
                       {editingCatId === cat.id ? (
                         <Input
                           autoFocus
@@ -281,9 +289,15 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                 {/* Linha Superior: Ícone, Nome da Categoria, Badges e Ações */}
                 <div className="flex items-center justify-between gap-2 mb-2.5">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="p-1.5 rounded-lg bg-secondary shrink-0">
-                      <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                    <IconPicker value={cat.icon} onChange={(icon) => updateCategoryIcon(cat.id, icon)}>
+                      <button
+                        type="button"
+                        title="Trocar ícone"
+                        className="p-1.5 rounded-lg bg-secondary shrink-0 hover:bg-accent transition-colors cursor-pointer"
+                      >
+                        <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </IconPicker>
                     {editingCatId === cat.id ? (
                       <Input
                         autoFocus
