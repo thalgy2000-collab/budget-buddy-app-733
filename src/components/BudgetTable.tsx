@@ -133,9 +133,15 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                 <tr key={cat.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-secondary shrink-0">
-                        <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      <IconPicker value={cat.icon} onChange={(icon) => updateCategoryIcon(cat.id, icon)}>
+                        <button
+                          type="button"
+                          title="Trocar ícone"
+                          className="p-1.5 rounded-lg bg-secondary shrink-0 hover:bg-accent transition-colors cursor-pointer"
+                        >
+                          <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </IconPicker>
                       {editingCatId === cat.id ? (
                         <Input
                           autoFocus
@@ -283,9 +289,15 @@ export function BudgetTable({ title, categories, month, getEntry, upsertEntry, u
                 {/* Linha Superior: Ícone, Nome da Categoria, Badges e Ações */}
                 <div className="flex items-center justify-between gap-2 mb-2.5">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="p-1.5 rounded-lg bg-secondary shrink-0">
-                      <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                    <IconPicker value={cat.icon} onChange={(icon) => updateCategoryIcon(cat.id, icon)}>
+                      <button
+                        type="button"
+                        title="Trocar ícone"
+                        className="p-1.5 rounded-lg bg-secondary shrink-0 hover:bg-accent transition-colors cursor-pointer"
+                      >
+                        <CategoryIcon name={cat.icon} className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </IconPicker>
                     {editingCatId === cat.id ? (
                       <Input
                         autoFocus
