@@ -11,6 +11,7 @@ import { CategoryDetailDialog } from './CategoryDetailDialog';
 import { EntryHistoryDialog } from './EntryHistoryDialog';
 import { Badge } from '@/components/ui/badge';
 import { ValueSumInput } from './ValueSumInput';
+import { IconPicker } from './IconPicker';
 
 interface BudgetTableProps {
   title: string;
@@ -20,6 +21,7 @@ interface BudgetTableProps {
   upsertEntry: (categoryId: string, month: string, planned: number, actual: number) => void;
   updateEntryDetails: (categoryId: string, month: string, details: Partial<BudgetEntry>) => void;
   renameCategory: (id: string, newName: string) => void;
+  updateCategoryIcon: (id: string, icon: string) => void;
   hideValues?: boolean;
 }
 
@@ -40,7 +42,7 @@ interface RowDraft {
   actual: string;
 }
 
-export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, hideValues }: BudgetTableProps) {
+export function BudgetTable({ title, categories, month, getEntry, upsertEntry, updateEntryDetails, renameCategory, updateCategoryIcon, hideValues }: BudgetTableProps) {
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [detailCat, setDetailCat] = useState<Category | null>(null);
