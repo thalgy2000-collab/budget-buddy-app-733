@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 const Index = () => {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [hideValues, setHideValues] = useState(false);
-  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, duplicatePlanned, undo, canUndo, updateEntryDetails } = useBudget();
+  const { categories, loading, getEntry, upsertEntry, getMonthSummary, addCategory, renameCategory, updateCategoryIcon, duplicatePlanned, undo, canUndo, updateEntryDetails } = useBudget();
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -210,6 +210,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            updateCategoryIcon={updateCategoryIcon}
             hideValues={hideValues}
           />
           <BudgetTable
@@ -220,6 +221,7 @@ const Index = () => {
             upsertEntry={upsertEntry}
             updateEntryDetails={updateEntryDetails}
             renameCategory={renameCategory}
+            updateCategoryIcon={updateCategoryIcon}
             hideValues={hideValues}
           />
         </div>
