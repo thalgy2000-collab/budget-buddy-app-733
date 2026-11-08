@@ -39,8 +39,8 @@ export class AiService {
     }
 
     const candidateModels = [
-      'gemini-flash-latest',
       'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
     ];
 
     let lastError: any = null;

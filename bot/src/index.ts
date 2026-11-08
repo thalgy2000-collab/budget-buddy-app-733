@@ -117,7 +117,9 @@ ${exp.explanation ? `💡 _${exp.explanation}_\n` : ''}━━━━━━━━�
 }
 
 async function sendConfirmationCard(chatJid: string, exp: PendingTransaction, prefixHeader?: string): Promise<void> {
-  activeMenuByChat.set(chatJid, { type: 'confirm_tx', txId: exp.id });
+  const mode: InteractionMode = { type: 'confirm_tx', txId: exp.id };
+  activeMenuByChat.set(chatJid, mode);
+  activeMenuByChat.set('admin', mode);
   const text = buildConfirmationText(exp, prefixHeader);
   await whatsapp.sendText(chatJid, text);
 }
@@ -140,7 +142,9 @@ function buildBudgetConfirmationText(bud: PendingBudget): string {
 }
 
 async function sendBudgetConfirmationCard(chatJid: string, bud: PendingBudget): Promise<void> {
-  activeMenuByChat.set(chatJid, { type: 'confirm_budget', budId: bud.id });
+  const mode: InteractionMode = { type: 'confirm_budget', budId: bud.id };
+  activeMenuByChat.set(chatJid, mode);
+  activeMenuByChat.set('admin', mode);
   const text = buildBudgetConfirmationText(bud);
   await whatsapp.sendText(chatJid, text);
 }
@@ -221,21 +225,31 @@ async function getService(chatJid: string, phone: string): Promise<BudgetService
 // ---------------- MENU NUMERADO INTERATIVO ----------------
 
 async function handleMenuReply(chatJid: string, phone: string, rawText: string): Promise<boolean> {
-  const menu = activeMenuByChat.get(chatJid);
+  let menu = activeMenuByChat.get(chatJid) || activeMenuByChat.get('admin');
+  if (!menu && pendingExpenses.size > 0) {
+    const latestExp = Array.from(pendingExpenses.values()).pop()!;
+    menu = { type: 'confirm_tx', txId: latestExp.id };
+  }
+  if (!menu && pendingBudgets.size > 0) {
+    const latestBud = Array.from(pendingBudgets.values()).pop()!;
+    menu = { type: 'confirm_budget', budId: latestBud.id };
+  }
   if (!menu) return false;
 
   const clean = rawText.trim().toLowerCase();
 
   // 1. Menu de confirmação de Transação
   if (menu.type === 'confirm_tx') {
-    const exp = pendingExpenses.get(menu.txId);
+    const exp = pendingExpenses.get(menu.txId) || Array.from(pendingExpenses.values()).pop();
     if (!exp) {
       activeMenuByChat.delete(chatJid);
+      activeMenuByChat.delete('admin');
       return false;
     }
 
     if (clean === '1' || clean === 'sim' || clean === 's' || clean === 'ok' || clean === 'confirmar') {
       activeMenuByChat.delete(chatJid);
+      activeMenuByChat.delete('admin');
       const budgetService = await getService(chatJid, phone);
       if (!budgetService) return true;
 
@@ -270,6 +284,12 @@ async function handleMenuReply(chatJid: string, phone: string, rawText: string):
             `📆 *Mês:* ${monthLabel} (${exp.month})${totalMonth}\n━━━━━━━━━━━━━━━━━━━━\n` +
             `_Já está sincronizado no seu painel do Budget Buddy!_`
         );
+
+        // Se houver outra transação pendente na fila, exibe automaticamente
+        if (pendingExpenses.size > 0) {
+          const nextExp = Array.from(pendingExpenses.values()).pop()!;
+          await sendConfirmationCard(chatJid, nextExp, '📌 *Próximo lançamento pendente na fila:*');
+        }
       } else {
         await whatsapp.sendText(chatJid, `❌ *Erro ao salvar no banco:* ${result.error}`);
       }
@@ -282,7 +302,9 @@ async function handleMenuReply(chatJid: string, phone: string, rawText: string):
 
       const categories = budgetService.getCategories(exp.type);
       const catIds = categories.map((c) => c.id);
-      activeMenuByChat.set(chatJid, { type: 'select_tx_cat', txId: exp.id, categoryIds: catIds });
+      const nextMode: InteractionMode = { type: 'select_tx_cat', txId: exp.id, categoryIds: catIds };
+      activeMenuByChat.set(chatJid, nextMode);
+      activeMenuByChat.set('admin', nextMode);
 
       const listText = categories
         .map((c, idx) => `*${idx + 1}* — ${c.name}${c.id === exp.categoryId ? ' 📍' : ''}`)
@@ -310,7 +332,9 @@ async function handleMenuReply(chatJid: string, phone: string, rawText: string):
         lines.push(`*${months.length}* — ${getMonthName(monthStr)} (${monthStr})${isCurrent}`);
       }
 
-      activeMenuByChat.set(chatJid, { type: 'select_tx_month', txId: exp.id, months });
+      const nextMode: InteractionMode = { type: 'select_tx_month', txId: exp.id, months };
+      activeMenuByChat.set(chatJid, nextMode);
+      activeMenuByChat.set('admin', nextMode);
       await whatsapp.sendText(
         chatJid,
         `📅 *Escolha o mês do orçamento:*\n\n${lines.join('\n')}\n\n*0* — ⬅️ Voltar\n\n_Responda com o número do mês._`
@@ -339,6 +363,7 @@ async function handleMenuReply(chatJid: string, phone: string, rawText: string):
 
     if (clean === '0' || clean === 'nao' || clean === 'não' || clean === 'cancelar') {
       activeMenuByChat.delete(chatJid);
+      activeMenuByChat.delete('admin');
       pendingExpenses.delete(exp.id);
       await whatsapp.sendText(chatJid, '❌ *Operação cancelada.* Nenhuma alteração foi feita no seu sistema.');
       return true;

@@ -35,8 +35,8 @@ export function isSameBrazilianPhone(phoneA: string | number, phoneB: string | n
 
 export interface IncomingWhatsAppMessage {
   id: string;
-  chatJid: string;   // JID completo para resposta (ex: "553499999999@s.whatsapp.net" ou "...@lid")
-  phone: string;     // Número normalizado (ex: "553499999999")
+  chatJid: string;   // JID completo para resposta (ex: "5516994657472@s.whatsapp.net")
+  phone: string;     // Número normalizado (ex: "5516994657472")
   type: 'text' | 'image' | 'document' | 'audio';
   text?: string;
   caption?: string;
@@ -53,7 +53,9 @@ export class WhatsAppClient {
   private connectedPhone: string = '';
   private connectedJid: string = '';
   private connectedLid: string = '';
+  private bootTimestampSec: number = Math.floor(Date.now() / 1000);
   private sentByBotIds = new Set<string>();
+  private processedIncomingIds = new Set<string>();
   private messageHandler: MessageHandler | null = null;
 
   private sentWelcomeOnBoot = false;
@@ -71,6 +73,7 @@ export class WhatsAppClient {
     return {
       status: this.connectionStatus,
       connectedPhone: this.connectedPhone,
+      connectedLid: this.connectedLid,
       qrDataUrl: this.qrDataUrl,
     };
   }
@@ -92,12 +95,34 @@ export class WhatsAppClient {
     return '';
   }
 
+  private refreshIdentityFromUser(meObj: any) {
+    if (!meObj) return;
+    if (meObj.id) {
+      const p = normalizePhone(meObj.id);
+      if (p) {
+        this.connectedPhone = p;
+        this.connectedJid = `${p}@s.whatsapp.net`;
+      }
+    }
+    if (meObj.lid) {
+      const lidBase = String(meObj.lid).split('@')[0].split(':')[0];
+      if (lidBase) {
+        this.connectedLid = `${lidBase}@lid`;
+      }
+    }
+  }
+
   async connect(): Promise<void> {
     if (!fs.existsSync(config.whatsappAuthDir)) {
       fs.mkdirSync(config.whatsappAuthDir, { recursive: true });
     }
 
+    this.bootTimestampSec = Math.floor(Date.now() / 1000);
     const { state, saveCreds } = await useMultiFileAuthState(config.whatsappAuthDir);
+
+    // Já extrai phone e lid das credenciais salvas se existirem
+    this.refreshIdentityFromUser(state.creds?.me);
+
     const { version } = await fetchLatestBaileysVersion().catch(() => ({
       version: [2, 3000, 1015901307] as [number, number, number],
     }));
@@ -114,7 +139,11 @@ export class WhatsAppClient {
       markOnlineOnConnect: false,
     });
 
-    this.sock.ev.on('creds.update', saveCreds);
+    this.sock.ev.on('creds.update', async () => {
+      this.refreshIdentityFromUser(this.sock?.user);
+      this.refreshIdentityFromUser(this.sock?.authState?.creds?.me);
+      await saveCreds();
+    });
 
     this.sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
@@ -133,12 +162,12 @@ export class WhatsAppClient {
       if (connection === 'open') {
         this.connectionStatus = 'connected';
         this.qrDataUrl = null;
-        const user = this.sock?.user;
-        this.connectedPhone = normalizePhone(user?.id || '');
-        this.connectedJid = this.connectedPhone ? `${this.connectedPhone}@s.whatsapp.net` : '';
-        this.connectedLid = (user as any)?.lid ? String((user as any).lid).split(':')[0] + '@lid' : '';
+        this.refreshIdentityFromUser(this.sock?.user);
+        this.refreshIdentityFromUser(this.sock?.authState?.creds?.me);
 
-        console.log(`🟢 WhatsApp conectado com sucesso! Número: ${this.connectedPhone}`);
+        console.log(
+          `🟢 WhatsApp conectado com sucesso! Número: ${this.connectedPhone} (LID: ${this.connectedLid || 'aguardando'})`
+        );
         if (!this.sentWelcomeOnBoot && this.connectedJid && this.onConnectedCallback) {
           this.sentWelcomeOnBoot = true;
           this.onConnectedCallback(this.connectedJid, this.connectedPhone);
@@ -166,11 +195,13 @@ export class WhatsAppClient {
     });
 
     this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
+      // Aceita tanto 'notify' quanto 'append' (no WhatsApp multi-device, mensagens fromMe na conversa
+      // consigo mesmo frequentemente chegam como 'append')
+      if (type !== 'notify' && type !== 'append') return;
 
       for (const msg of messages) {
         try {
-          await this.processRawMessage(msg);
+          await this.processRawMessage(msg, type);
         } catch (err: any) {
           console.error('[WhatsApp] Erro ao processar mensagem recebida:', err.message || err);
         }
@@ -191,6 +222,31 @@ export class WhatsAppClient {
     return code;
   }
 
+  private isSelfChatJid(remoteJid: string): boolean {
+    if (!remoteJid) return false;
+    this.refreshIdentityFromUser(this.sock?.user);
+    this.refreshIdentityFromUser(this.sock?.authState?.creds?.me);
+
+    const remoteBase = remoteJid.split('@')[0].split(':')[0];
+    const remotePhone = normalizePhone(remoteJid);
+
+    if (this.connectedPhone && isSameBrazilianPhone(remotePhone, this.connectedPhone)) {
+      return true;
+    }
+
+    const myLidBase = this.connectedLid ? this.connectedLid.split('@')[0].split(':')[0] : '';
+    if (myLidBase && remoteBase === myLidBase) {
+      return true;
+    }
+
+    // Fallback para o LID conhecido da conta principal 5516994657472
+    if (this.connectedPhone === '5516994657472' && remoteBase === '39651221995667') {
+      return true;
+    }
+
+    return false;
+  }
+
   private isAllowedChat(msg: WAMessage): boolean {
     const remoteJid = msg.key?.remoteJid || '';
     if (!remoteJid) return false;
@@ -205,22 +261,18 @@ export class WhatsAppClient {
       return false;
     }
 
-    const remotePhone = normalizePhone(remoteJid);
-
     // 1. Conversa consigo mesmo ("Você" / Bloco de notas pessoal)
-    const isSelfPhone = this.connectedPhone && isSameBrazilianPhone(remotePhone, this.connectedPhone);
-    const isSelfLid = this.connectedLid && remoteJid.split(':')[0] === this.connectedLid.split(':')[0];
-    if (isSelfPhone || isSelfLid) {
+    if (this.isSelfChatJid(remoteJid)) {
       return true;
     }
 
     // 2. Se enviou mensagem para outra pessoa (fromMe = true para um terceiro), IGNORAR!
-    // Assim o bot nunca interfere nas suas conversas pessoais com outras pessoas.
     if (msg.key?.fromMe) {
       return false;
     }
 
     // 3. Se você configurou WHATSAPP_ADMIN_PHONE (ex: usando número secundário para o bot)
+    const remotePhone = normalizePhone(remoteJid);
     if (config.whatsappAdminPhone && isSameBrazilianPhone(remotePhone, config.whatsappAdminPhone)) {
       return true;
     }
@@ -228,12 +280,19 @@ export class WhatsAppClient {
     return false;
   }
 
-  private async processRawMessage(msg: WAMessage) {
+  private async processRawMessage(msg: WAMessage, upsertType: string) {
     const msgId = msg.key?.id;
     if (!msgId) return;
 
     // Ignorar mensagens que o próprio bot enviou (evita loop infinito na conversa "Você")
-    if (this.sentByBotIds.has(msgId)) {
+    if (this.sentByBotIds.has(msgId) || this.processedIncomingIds.has(msgId)) {
+      return;
+    }
+
+    // Se veio como 'append', ignorar mensagens antigas de sincronização de histórico
+    const rawTs = msg.messageTimestamp;
+    const msgTsSec = typeof rawTs === 'number' ? rawTs : Number((rawTs as any)?.low || rawTs || 0);
+    if (upsertType === 'append' && msgTsSec > 0 && msgTsSec < this.bootTimestampSec - 30) {
       return;
     }
 
@@ -253,8 +312,8 @@ export class WhatsAppClient {
       m;
 
     const rawRemoteJid = msg.key?.remoteJid || '';
-    const isSelfLid = this.connectedLid && rawRemoteJid.split(':')[0] === this.connectedLid.split(':')[0];
-    const remoteJid = isSelfLid && this.connectedJid ? this.connectedJid : rawRemoteJid;
+    const isSelf = this.isSelfChatJid(rawRemoteJid);
+    const remoteJid = isSelf && this.connectedJid ? this.connectedJid : rawRemoteJid;
     const phone = this.connectedPhone || normalizePhone(remoteJid);
 
     // 1. Texto
@@ -264,6 +323,8 @@ export class WhatsAppClient {
       '';
 
     if (textBody) {
+      this.processedIncomingIds.add(msgId);
+      console.log(`[WhatsApp] Texto recebido (${upsertType}) de ${rawRemoteJid}: "${textBody.substring(0, 60)}"`);
       if (this.messageHandler) {
         await this.messageHandler({
           id: msgId,
@@ -279,6 +340,8 @@ export class WhatsAppClient {
 
     // 2. Imagem / Foto
     if (content.imageMessage) {
+      this.processedIncomingIds.add(msgId);
+      console.log(`[WhatsApp] Imagem recebida (${upsertType}) de ${rawRemoteJid}`);
       if (this.messageHandler) {
         await this.messageHandler({
           id: msgId,
@@ -295,6 +358,8 @@ export class WhatsAppClient {
 
     // 3. Documento (PDF / Imagem)
     if (content.documentMessage) {
+      this.processedIncomingIds.add(msgId);
+      console.log(`[WhatsApp] Documento recebido (${upsertType}) de ${rawRemoteJid}`);
       if (this.messageHandler) {
         await this.messageHandler({
           id: msgId,
@@ -311,6 +376,8 @@ export class WhatsAppClient {
 
     // 4. Áudio / Nota de Voz
     if (content.audioMessage) {
+      this.processedIncomingIds.add(msgId);
+      console.log(`[WhatsApp] Áudio recebido (${upsertType}) de ${rawRemoteJid}`);
       if (this.messageHandler) {
         await this.messageHandler({
           id: msgId,

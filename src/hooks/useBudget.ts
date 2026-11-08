@@ -122,7 +122,43 @@ export function useBudget() {
       setLoading(false);
     };
 
+    const reloadEntriesOnly = async () => {
+      const { data: ents, error: entsErr } = await supabase
+        .from('budget_entries')
+        .select('*');
+      if (!entsErr && ents) {
+        setEntries(ents.map(toEntry));
+      }
+    };
+
     load();
+
+    // Sincronização automática em tempo real quando o bot do WhatsApp insere/atualiza valores
+    const channel = supabase
+      .channel('budget_entries_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'budget_entries', filter: `user_id=eq.${user.id}` },
+        () => {
+          reloadEntriesOnly();
+        }
+      )
+      .subscribe();
+
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        reloadEntriesOnly();
+      }
+    };
+
+    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+    };
   }, [user, seedDefaults]);
 
   const getEntry = useCallback(

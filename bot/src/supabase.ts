@@ -19,6 +19,9 @@ export class BudgetService {
   private client: SupabaseClient;
   private userId: string | null = null;
   private email: string | null = null;
+  private lastEmail: string = '';
+  private lastPassword: string = '';
+  private lastAuthAt: number = 0;
   private categoriesCache: CategoryItem[] = [];
 
   constructor(identifier?: string) {
@@ -39,16 +42,37 @@ export class BudgetService {
     return this.email;
   }
 
+  async ensureAuthenticated(): Promise<boolean> {
+    const now = Date.now();
+    // Reautentica se não tiver userId ou se passou mais de 25 minutos
+    if (!this.userId || now - this.lastAuthAt > 25 * 60 * 1000) {
+      return this.authenticate();
+    }
+    try {
+      const { data } = await this.client.auth.getSession();
+      if (!data?.session) {
+        return this.authenticate();
+      }
+    } catch {
+      return this.authenticate();
+    }
+    return true;
+  }
+
   async authenticate(): Promise<boolean> {
-    if (!config.userEmail || !config.userPassword) {
+    const email = this.lastEmail || config.userEmail;
+    const password = this.lastPassword || config.userPassword;
+    if (!email || !password) {
       console.error('[Supabase] E-mail ou senha não configurados no .env');
       return false;
     }
-    return this.authenticateWithCredentials(config.userEmail, config.userPassword);
+    return this.authenticateWithCredentials(email, password);
   }
 
   async authenticateWithCredentials(email: string, password: string): Promise<boolean> {
     try {
+      this.lastEmail = email;
+      this.lastPassword = password;
       const { data, error } = await this.client.auth.signInWithPassword({
         email,
         password,
@@ -61,6 +85,7 @@ export class BudgetService {
 
       this.userId = data.user.id;
       this.email = data.user.email || email;
+      this.lastAuthAt = Date.now();
       console.log(`[Supabase] Autenticado com sucesso como: ${this.email} (ID: ${this.userId})`);
       await this.refreshCategories();
       return true;
@@ -109,90 +134,109 @@ export class BudgetService {
     amount: number;
     type: 'income' | 'expense';
   }): Promise<{ success: boolean; totalMonthCategory?: number; error?: string }> {
-    if (!this.userId) {
-      const ok = await this.authenticate();
-      if (!ok) return { success: false, error: 'Não autenticado no Supabase' };
-    }
+    const ok = await this.ensureAuthenticated();
+    if (!ok || !this.userId) return { success: false, error: 'Não autenticado no Supabase' };
 
     const { categoryId, month, title, amount } = params;
 
-    try {
-      // 1. Verificar se já existe lançamento para essa categoria e mês
-      const { data: existing, error: fetchErr } = await this.client
-        .from('budget_entries')
-        .select('*')
-        .eq('user_id', this.userId)
-        .eq('category_id', categoryId)
-        .eq('month', month)
-        .maybeSingle();
-
-      if (fetchErr) {
-        console.error('[Supabase] Erro ao consultar lançamento:', fetchErr.message);
-        return { success: false, error: fetchErr.message };
-      }
-
-      const newItem: BudgetSubItem = {
-        id: crypto.randomUUID(),
-        name: title,
-        value: amount,
-      };
-
-      const now = new Date().toISOString();
-
-      if (existing) {
-        const currentSubItems: BudgetSubItem[] = Array.isArray(existing.sub_items)
-          ? existing.sub_items
-          : [];
-        const newSubItems = [...currentSubItems, newItem];
-        const newActual = Number(existing.actual || 0) + amount;
-
-        const history = Array.isArray(existing.history) ? [...existing.history] : [];
-        history.push({
-          date: now,
-          planned: Number(existing.planned || 0),
-          actual: newActual,
-        });
-
-        const { error: updateErr } = await this.client
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        // 1. Verificar se já existe lançamento para essa categoria e mês
+        const { data: existing, error: fetchErr } = await this.client
           .from('budget_entries')
-          .update({
+          .select('*')
+          .eq('user_id', this.userId)
+          .eq('category_id', categoryId)
+          .eq('month', month)
+          .maybeSingle();
+
+        if (fetchErr) {
+          console.error('[Supabase] Erro ao consultar lançamento:', fetchErr.message);
+          if (attempt === 0) {
+            await this.authenticate();
+            continue;
+          }
+          return { success: false, error: fetchErr.message };
+        }
+
+        const newItem: BudgetSubItem = {
+          id: crypto.randomUUID(),
+          name: title,
+          value: amount,
+        };
+
+        const now = new Date().toISOString();
+
+        if (existing) {
+          const currentSubItems: BudgetSubItem[] = Array.isArray(existing.sub_items)
+            ? existing.sub_items
+            : [];
+          const newSubItems = [...currentSubItems, newItem];
+          const newActual = Number(existing.actual || 0) + amount;
+
+          const history = Array.isArray(existing.history) ? [...existing.history] : [];
+          history.push({
+            date: now,
+            planned: Number(existing.planned || 0),
             actual: newActual,
-            sub_items: newSubItems,
-            history,
+          });
+
+          const { error: updateErr } = await this.client
+            .from('budget_entries')
+            .update({
+              actual: newActual,
+              sub_items: newSubItems,
+              history,
+              updated_at: now,
+            })
+            .eq('id', existing.id);
+
+          if (updateErr) {
+            console.error('[Supabase] Erro ao atualizar lançamento:', updateErr.message);
+            if (attempt === 0) {
+              await this.authenticate();
+              continue;
+            }
+            return { success: false, error: updateErr.message };
+          }
+
+          console.log(`[Supabase] Atualizado com sucesso (${month} / ${title}): +${amount} => total ${newActual}`);
+          return { success: true, totalMonthCategory: newActual };
+        } else {
+          // Criar novo registro para esse mês/categoria
+          const { error: insertErr } = await this.client.from('budget_entries').insert({
+            user_id: this.userId,
+            category_id: categoryId,
+            month,
+            planned: 0,
+            actual: amount,
+            sub_items: [newItem],
+            history: [{ date: now, planned: 0, actual: amount }],
             updated_at: now,
-          })
-          .eq('id', existing.id);
+          });
 
-        if (updateErr) {
-          console.error('[Supabase] Erro ao atualizar lançamento:', updateErr.message);
-          return { success: false, error: updateErr.message };
+          if (insertErr) {
+            console.error('[Supabase] Erro ao criar lançamento:', insertErr.message);
+            if (attempt === 0) {
+              await this.authenticate();
+              continue;
+            }
+            return { success: false, error: insertErr.message };
+          }
+
+          console.log(`[Supabase] Criado novo lançamento (${month} / ${title}): ${amount}`);
+          return { success: true, totalMonthCategory: amount };
         }
-
-        return { success: true, totalMonthCategory: newActual };
-      } else {
-        // Criar novo registro para esse mês/categoria
-        const { error: insertErr } = await this.client.from('budget_entries').insert({
-          user_id: this.userId,
-          category_id: categoryId,
-          month,
-          planned: 0,
-          actual: amount,
-          sub_items: [newItem],
-          history: [{ date: now, planned: 0, actual: amount }],
-          updated_at: now,
-        });
-
-        if (insertErr) {
-          console.error('[Supabase] Erro ao criar lançamento:', insertErr.message);
-          return { success: false, error: insertErr.message };
+      } catch (err: any) {
+        console.error('[Supabase] Exceção ao salvar:', err.message);
+        if (attempt === 0) {
+          await this.authenticate();
+          continue;
         }
-
-        return { success: true, totalMonthCategory: amount };
+        return { success: false, error: err.message };
       }
-    } catch (err: any) {
-      console.error('[Supabase] Exceção ao salvar:', err.message);
-      return { success: false, error: err.message };
     }
+    return { success: false, error: 'Falha após tentativa de reconexão' };
   }
 
   async setPlannedBudget(params: {
@@ -200,10 +244,8 @@ export class BudgetService {
     month: string; // "YYYY-MM"
     amount: number;
   }): Promise<{ success: boolean; planned?: number; actual?: number; remaining?: number; error?: string }> {
-    if (!this.userId) {
-      const ok = await this.authenticate();
-      if (!ok) return { success: false, error: 'Não autenticado no Supabase' };
-    }
+    const ok = await this.ensureAuthenticated();
+    if (!ok || !this.userId) return { success: false, error: 'Não autenticado no Supabase' };
 
     const { categoryId, month, amount } = params;
 
